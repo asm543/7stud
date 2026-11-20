@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>7스터드 온라인</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='6' width='40' height='52' rx='6' fill='%23fbf8ef'/%3E%3Ctext x='30' y='44' font-size='30' text-anchor='middle' font-family='Arial' font-weight='700' fill='%23c8102e'%3E7%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday game: calm card-room focus, every rule visible while you play
+   IDEA a tournament stud table with the floor's tournament clock hung above it, and a lobby card like a seat ticket
+   PICTURE the felt table itself: opponents on the rail, you across the bottom, pot in the middle
+   COLOUR deep felt green ground, walnut rail, ivory cards in a four-colour deck, chip red for raises, brass for the pot and the player to act
+   TYPE Barlow Condensed for the clock, room code, card ranks and chip counts + IBM Plex Sans KR for everything written
+   LAYOUT laptop: clock bar, table with action bar under it, side column for hint, dead cards and log; under 760px: seats as a list, pot, you, sticky action bar, panels */
+:root{color-scheme:dark;--room:#0a3122;--felt:#127048;--felt-2:#0c5236;--rail:#4a2b17;--rail-2:#6e4427;--ink:#f4f0e6;--muted:#b9cbbf;--panel:rgba(3,24,15,.74);--line:rgba(244,240,230,.15);--brass:#e3b75b;--chip:#d6453a;--ok:#5fd18b;--card:#fbf8ef;--spade:#15171b;--heart:#c8102e;--diamond:#1d5fc4;--club:#17803e;--ocw:clamp(22px,2.15vw,28px);--mcw:46px}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--room);color:var(--ink);font:15px/1.5 'IBM Plex Sans KR',system-ui,sans-serif;overflow-x:clip}
+button,input,select{font:inherit;color:inherit}
+.app{min-height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
+.clock{display:flex;flex-wrap:wrap;background:#06231a;border-bottom:1px solid var(--line)}
+.brand{padding:10px 18px;display:grid;align-content:center}
+.brand h1{margin:0;font:700 22px/1.05 'Barlow Condensed',sans-serif;letter-spacing:.01em}
+.brand span{color:var(--muted);font-size:13px}
+.cell{padding:8px 16px;border-left:1px solid var(--line);display:grid;align-content:center}
+.cell span{color:var(--muted);font-size:13px;white-space:nowrap}
+.cell b{font:700 22px/1.1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.cell.lv b{font-size:30px;color:var(--brass)}
+.tools{margin-left:auto;display:flex;gap:8px;align-items:center;padding:8px 14px;flex-wrap:wrap}
+.conn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap}
+.dot{width:9px;height:9px;border-radius:50%;background:#7d8b83;flex:none}
+.dot.on{background:var(--ok)}
+.dot.warn{background:var(--brass)}
+.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px max(16px,1.6vw)}
+.play{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px}
+.side{display:flex;flex-direction:column;gap:12px}
+.table{position:relative;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,1.25fr);grid-template-areas:"lt tc rt" "lm mid rm" "lb mid rb" "me me me";gap:12px 20px;padding:26px 26px 20px;align-content:space-between;min-height:460px}
+.table::before{content:"";position:absolute;inset:6px;border-radius:130px;background:radial-gradient(ellipse at 50% 38%,#18825a 0,var(--felt) 45%,var(--felt-2) 100%);border:14px solid var(--rail);box-shadow:inset 0 0 0 2px var(--rail-2),inset 0 10px 40px rgba(0,0,0,.35),0 16px 40px rgba(0,0,0,.4)}
+.table>*{position:relative}
+.seat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px 9px;display:grid;gap:5px;align-self:center;transition:box-shadow .2s,border-color .2s}
+.seat .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
+.sn{font:600 13px 'Barlow Condensed',sans-serif;color:var(--muted);white-space:nowrap}
+.line2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.stk{font:700 20px/1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.badge{font:600 13px/1 'Barlow Condensed',sans-serif;padding:4px 8px;border-radius:99px;background:rgba(244,240,230,.12);white-space:nowrap}
+.badge.agg{background:var(--chip)}
+.badge.fold{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.badge.time{background:var(--brass);color:#1b1407}
+.tag{font-size:12px;line-height:1;padding:3px 6px;border-radius:6px;background:rgba(227,183,91,.18);color:var(--brass);font-weight:600}
+.betpill{display:inline-flex;align-items:center;gap:5px;font:700 15px/1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.betpill i{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle,var(--ink) 0 28%,var(--chip) 30% 100%);box-shadow:0 0 0 2px rgba(0,0,0,.25)}
+.seat.turn{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass),0 0 26px rgba(227,183,91,.4)}
+.seat.win{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.seat.out{opacity:.5}
+.seat .res{font-size:13px;color:var(--brass);font-weight:600}
+.won{color:var(--brass);font:700 16px/1 'Barlow Condensed',sans-serif}
+.cards{display:flex;gap:7px;align-items:flex-end;min-height:calc(var(--ocw)*1.4)}
+.grp{display:flex;gap:2px}
+.grp.down{padding-right:7px;border-right:1px dashed rgba(244,240,230,.28)}
+.grp.down:empty{display:none}
+.cards.dim{opacity:.38}
+.muted{color:var(--muted)}
+.cd{--cw:var(--ocw);width:var(--cw);height:calc(var(--cw)*1.4);border-radius:4px;background:var(--card);color:var(--spade);display:grid;place-content:center;justify-items:center;line-height:.9;box-shadow:0 1px 0 rgba(0,0,0,.4);font-family:'Barlow Condensed',sans-serif;flex:none}
+.cd b{font-weight:700;font-size:calc(var(--cw)*.6)}
+.cd i{font-style:normal;font-size:calc(var(--cw)*.5)}
+.cd.s0{color:var(--club)}.cd.s1{color:var(--diamond)}.cd.s2{color:var(--heart)}.cd.s3{color:var(--spade)}
+.cd.bk{background:repeating-linear-gradient(135deg,#9a291f 0 4px,#b9392c 4px 8px);border:2px solid var(--card)}
+.cd.deal{animation:deal .3s ease-out}
+@keyframes deal{from{transform:translateY(-12px) scale(.88);opacity:0}}
+.seat.bottom{grid-area:me;justify-self:center;width:min(100%,560px);padding:10px 14px 12px}
+.me .cd{--cw:var(--mcw)}
+.me .cards{min-height:calc(var(--mcw)*1.4 + 20px)}
+.me .grp{flex-direction:column;align-items:flex-start;gap:4px}
+.me .grp>div{display:flex;gap:4px}
+.me .grp small{color:var(--muted);font-size:13px;line-height:1}
+.center{grid-area:mid;display:grid;justify-items:center;align-content:center;text-align:center;gap:6px;padding:8px}
+.street{font:600 16px/1.1 'Barlow Condensed',sans-serif;color:var(--muted)}
+.pot small{display:block;font:600 14px/1 'Barlow Condensed',sans-serif;color:var(--brass)}
+.pot strong{font:700 clamp(30px,3.4vw,44px)/1 'Barlow Condensed',sans-serif;color:var(--brass)}
+.center .sub{font-size:13px;color:var(--muted)}
+.center .status{font-size:14px;font-weight:600;min-height:21px}
+.actionbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:#06231a;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.ab-info{font-size:15px}
+.ab-info em{font-style:normal;color:var(--brass);font-weight:600}
+.ab-btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{min-height:44px;padding:6px 16px;border-radius:10px;border:1px solid var(--line);background:rgba(244,240,230,.09);display:inline-grid;justify-items:center;align-content:center;line-height:1.15;cursor:pointer;font-weight:600}
+.btn small{font-weight:500;font-size:13px;opacity:.75}
+.btn:hover{background:rgba(244,240,230,.16)}
+.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.btn.call{background:var(--card);color:#10251a;border-color:transparent}
+.btn.go{background:var(--chip);border-color:transparent}
+.btn.next{background:var(--brass);color:#1b1407;border-color:transparent;padding-inline:22px}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.sm{min-height:36px;padding:4px 12px;font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.panel h2{margin:0 0 6px;font:700 18px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.01em}
+.panel p{margin:4px 0}
+.hint-out{display:grid;gap:6px;margin-top:8px;font-size:14px}
+.hint-out .big{font:700 26px/1 'Barlow Condensed',sans-serif}
+.meter{height:8px;border-radius:9px;background:rgba(244,240,230,.12);position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--brass);border-radius:9px}
+.meter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--chip)}
+.kv{display:flex;justify-content:space-between;gap:10px}
+.kv span:last-child{white-space:nowrap;font-weight:600}
+.dead{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.dead .cd{--cw:24px}
+.log{overflow:auto;max-height:320px;font-size:14px;display:grid;gap:2px;align-content:start}
+.log div{padding:1px 0}
+.log .l-head{margin-top:8px;font-weight:700;color:var(--ink)}
+.log .l-street{color:var(--muted)}
+.log .l-win{color:var(--brass)}
+.log .l-bust{color:#ff8a7e}
+.log .l-level{color:var(--brass);font-weight:700}
+details summary{cursor:pointer;font:700 18px/1.2 'Barlow Condensed',sans-serif}
+details ul{margin:8px 0 0;padding-left:18px;font-size:14px;display:grid;gap:4px}
+.ov{position:fixed;inset:0;background:rgba(2,14,9,.74);display:grid;place-items:center;padding:16px;z-index:10;overflow:auto}
+.dlg{background:#0b3a28;border:1px solid var(--line);border-radius:18px;padding:22px clamp(16px,3vw,28px);width:min(580px,100%);box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.dlg h2{margin:0 0 6px;font:700 clamp(30px,5vw,40px)/1.05 'Barlow Condensed',sans-serif;text-wrap:balance}
+.dlg h3{margin:16px 0 6px;font:700 18px/1.1 'Barlow Condensed',sans-serif}
+.dlg p{margin:6px 0 14px;color:var(--muted)}
+.fld{display:grid;gap:4px;margin:0 0 12px}
+.fld span{font-weight:600;font-size:14px}
+.fld input,.fld select{min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(244,240,230,.07);font-size:16px}
+.fld select option{background:#0b3a28}
+.joinrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.joinrow .fld{margin:0}
+#codeIn{text-transform:uppercase;letter-spacing:.12em;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:16px 0 10px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.err{color:#ff9d92!important;min-height:22px;margin:8px 0 0!important}
+fieldset{border:0;padding:0;margin:0 0 12px}
+legend{font-weight:600;margin-bottom:6px;font-size:14px}
+.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}
+.seg label{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;min-height:44px;background:rgba(244,240,230,.05);align-content:center}
+.seg label small{color:var(--muted);font-size:13px;line-height:1.3}
+.seg input{position:absolute;opacity:0}
+.seg label:has(input:checked){border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass);background:rgba(227,183,91,.12)}
+.seg label:has(input:focus-visible){outline:3px solid var(--brass);outline-offset:2px}
+.seg label:has(input:disabled){cursor:default;opacity:.75}
+.dlg .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.ticket{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 16px;border:1px dashed rgba(227,183,91,.55);border-radius:14px;background:rgba(227,183,91,.07)}
+.ticket .code{font:700 44px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;color:var(--brass)}
+.ticket small{display:block;color:var(--muted);font-size:13px}
+.link{font-size:13px;overflow-wrap:anywhere;margin:8px 0 0!important}
+.members{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.members li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(244,240,230,.05)}
+.members li .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
+.rules{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5}
+table.st{width:100%;border-collapse:collapse;font-size:15px;margin:6px 0 16px}
+table.st td{padding:7px 4px;border-bottom:1px solid var(--line)}
+table.st td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.st tr.me td{color:var(--brass);font-weight:700}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);color:#10251a;padding:10px 16px;border-radius:12px;font-weight:600;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
+@media(min-width:1100px){.app{height:100%}.main{min-height:0;grid-template-rows:minmax(0,1fr)}.play{min-height:0}.side{min-height:0}.log-panel{flex:1;min-height:0;display:flex;flex-direction:column}.log{flex:1;max-height:none}}
+@media(max-width:1099px){.main{grid-template-columns:minmax(0,1fr)}.actionbar{position:sticky;bottom:8px;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.45)}}
+@media(max-width:759px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:none;padding:14px 12px;gap:10px;min-height:0}.table>*{grid-area:auto!important}.table .center,.table .seat.bottom{grid-column:1 / -1}.table::before{border-radius:40px;border-width:10px}.cell{padding:6px 12px}.cell b{font-size:19px}.cell.lv b{font-size:24px}.tools{margin-left:0}}
+@media(max-width:559px){.table{grid-template-columns:minmax(0,1fr)}:root{--ocw:24px;--mcw:38px}.seat:not(.bottom){grid-template-columns:minmax(0,1fr) auto;align-items:center}.seat:not(.bottom) .cards{grid-column:2;grid-row:1 / span 3}.ab-btns{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}.brand{width:100%}.cell:nth-child(2){border-left:0}.ticket .code{font-size:36px}}
+@media(prefers-reduced-motion:reduce){.cd.deal{animation:none}.seat{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="clock">
+    <div class="brand"><h1>7 Stud 온라인</h1><span id="brandSub">친구와 함께하는 토너먼트</span></div>
+    <div class="cell lv"><span>레벨</span><b id="cLv">-</b></div>
+    <div class="cell"><span>앤티 / 브링인</span><b id="cAnte">-</b></div>
+    <div class="cell"><span>리밋 (스몰-빅)</span><b id="cLim">-</b></div>
+    <div class="cell"><span id="cNextL">다음 레벨</span><b id="cNext">-</b></div>
+    <div class="cell"><span>남은 인원</span><b id="cLeft">-</b></div>
+    <div class="cell"><span>평균 스택</span><b id="cAvg">-</b></div>
+    <div class="tools">
+      <span class="conn"><i class="dot" id="connDot"></i><span id="connLabel">연결 중</span></span>
+      <button class="btn sm" id="codeChip" type="button" hidden>방 코드</button>
+      <button class="btn sm" id="modeBtn" type="button" hidden>연습 모드</button>
+      <button class="btn sm" id="leaveTop" type="button" hidden>나가기</button>
+    </div>
+  </header>
+  <div class="main">
+    <section class="play" aria-label="게임 테이블">
+      <div class="table" id="table"></div>
+      <div class="actionbar" aria-live="polite">
+        <div class="ab-info" id="abInfo">방에 들어가면 시작할 수 있어요</div>
+        <div class="ab-btns" id="abBtns"></div>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="panel" id="hintPanel">
+        <h2>힌트</h2>
+        <p class="muted">내 차례에 계산하면 팟 오즈, 추정 승률, 남은 카드를 보여줘요.</p>
+        <button class="btn sm" id="hintBtn" type="button">지금 계산 (H)</button>
+        <div class="hint-out" id="hintOut"></div>
+      </section>
+      <section class="panel">
+        <h2>죽은 카드</h2>
+        <p class="muted" id="deadNote">이번 핸드에서 폴드한 사람의 오픈 카드</p>
+        <div class="dead" id="dead"></div>
+      </section>
+      <section class="panel log-panel">
+        <h2>핸드 기록</h2>
+        <div class="log" id="log"></div>
+      </section>
+      <section class="panel">
+        <details>
+          <summary>대회 룰 요약</summary>
+          <ul>
+            <li>매 핸드 전원 앤티. 3구는 히든 2장 + 오픈 1장.</li>
+            <li>오픈 카드가 가장 낮은 사람이 브링인. 숫자가 같으면 ♣ &lt; ♦ &lt; ♥ &lt; ♠ 중 낮은 무늬.</li>
+            <li>브링인 다음 사람들은 fold / call / complete(스몰 단위까지).</li>
+            <li>3·4구는 스몰, 5~7구는 빅 단위. 4구 오픈 페어 더블벳은 대회 룰대로 없음.</li>
+            <li>레이즈 캡: 베트 1 + 레이즈 3. 4구부터는 보이는 패가 가장 높은 사람이 먼저(같으면 낮은 좌석 번호).</li>
+            <li>7구는 히든. 동점이면 분할하고, 무늬는 승패에 쓰지 않음.</li>
+            <li>단축키: F 폴드, C 체크/콜/브링인, R 컴플리트/베트/레이즈, Enter 다음 핸드, H 힌트.</li>
+          </ul>
+        </details>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="ov" id="ovHome">
+  <form class="dlg" id="homeForm" autocomplete="off">
+    <h2>7스터드 온라인</h2>
+    <p>방을 만들고 링크를 보내면 친구가 바로 들어올 수 있어요. 계정은 필요 없고, 빈자리는 컴퓨터가 채워요. 혼자 컴퓨터랑 해도 돼요.</p>
+    <label class="fld"><span>닉네임</span><input id="nameIn" maxlength="12" placeholder="최대 12자" required></label>
+    <div class="row"><button class="btn next" type="button" id="createBtn">새 방 만들기</button></div>
+    <div class="or">또는 받은 코드로 참가</div>
+    <div class="joinrow">
+      <label class="fld"><span>방 코드</span><input id="codeIn" maxlength="5" placeholder="K7QM3" autocapitalize="characters" spellcheck="false"></label>
+      <button class="btn" type="button" id="joinBtn">참가</button>
+    </div>
+    <p class="err" id="homeErr"></p>
+    <p class="rules">무료 서버는 한동안 아무도 없으면 잠들어서, 처음 접속할 때 1분 정도 걸릴 수 있어요. 진행 중인 방은 서버가 재시작되면 사라져요.</p>
+  </form>
+</div>
+
+<div class="ov" id="ovLobby" hidden>
+  <div class="dlg">
+    <div class="ticket">
+      <div><small>방 코드</small><span class="code" id="lbCode">-</span></div>
+      <button class="btn" type="button" id="copyBtn">초대 링크 복사</button>
+    </div>
+    <p class="link muted" id="lbLink"></p>
+    <h3 id="lbTitle">참가자</h3>
+    <ul class="members" id="lbMembers"></ul>
+    <h3>내 모드</h3>
+    <div class="seg" id="modeSeg">
+      <label><input type="radio" name="mymode" value="practice"><span>연습 모드</span><small>죽은 카드·힌트 표시</small></label>
+      <label><input type="radio" name="mymode" value="real"><span>실전 모드</span><small>폴드한 카드는 직접 기억</small></label>
+    </div>
+    <h3>대회 설정 <small class="muted" id="setNote"></small></h3>
+    <div class="setgrid">
+      <label class="fld"><span>컴퓨터 상대</span><select id="setAis"></select></label>
+      <label class="fld"><span>턴 제한 시간</span><select id="setTurn"><option value="20">20초</option><option value="30">30초</option><option value="60">60초</option><option value="0">없음</option></select></label>
+      <label class="fld"><span>레벨업 간격</span><select id="setHpl"><option value="6">6핸드 (표준)</option><option value="4">4핸드 (터보)</option><option value="3">3핸드 (하이퍼)</option></select></label>
+      <label class="fld"><span>컴퓨터 진행 속도</span><select id="setSpeed"><option value="slow">느리게</option><option value="normal">보통</option><option value="fast">빠르게</option></select></label>
+    </div>
+    <div class="row"><button class="btn next" type="button" id="startBtn">대회 시작</button><button class="btn" type="button" id="leaveBtn">나가기</button></div>
+    <p class="muted" id="lbNote"></p>
+  </div>
+</div>
+
+<div class="ov" id="ovEnd" hidden>
+  <div class="dlg" id="endDlg"></div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="/engine.js"></script>
+<script>
+{
+  const S = Stud;
+  const SLOTS = { 0: [], 1: ['tc'], 2: ['lm', 'rm'], 3: ['lm', 'tc', 'rm'], 4: ['lb', 'lt', 'rt', 'rb'], 5: ['lb', 'lt', 'tc', 'rt', 'rb'], 6: ['lb', 'lm', 'lt', 'rt', 'rm', 'rb'] };
+  const BUY_IN = 1500;
+  const $ = id => document.getElementById(id);
+  const ui = { V: null, offset: 0, seenCards: new Set(), seenHand: -1, hint: null, logStick: true, sentAct: '', toastTimer: null };
+  const net = { ws: null, open: false, code: null, retry: 0, pingTimer: null, queued: null, joining: false };
+
+  /**
+   * HTML 특수문자를 이스케이프한다.
+   * @param {*} s 원문
+   * @returns {string} 안전한 문자열
+   */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  /**
+   * localStorage 읽기 (실패 시 기본값).
+   * @param {string} k 키
+   * @param {string} d 기본값
+   * @returns {string} 값
+   */
+  function load(k, d) {
+    try { return localStorage.getItem(k) || d; } catch (e) { return d; }
+  }
+
+  /**
+   * localStorage 쓰기 (실패해도 무시).
+   * @param {string} k 키
+   * @param {string} v 값
+   * @returns {void}
+   */
+  function save(k, v) {
+    try { localStorage.setItem(k, v); } catch (e) { return; }
+  }
+
+  /**
+   * 이 브라우저의 재접속 토큰을 만들거나 불러온다. 같은 토큰으로 다시 들어오면 같은 자리로 돌아간다.
+   * @returns {string} 토큰
+   */
+  function getToken() {
+    let tk = load('stud7-token', '');
+    if (!/^[\w-]{16,64}$/.test(tk)) {
+      tk = window.crypto && crypto.randomUUID ? crypto.randomUUID() : Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      save('stud7-token', tk);
+    }
+    return tk;
+  }
+
+  /**
+   * 잠깐 떠 있는 알림을 보여준다.
+   * @param {string} text 내용
+   * @returns {void}
+   */
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(ui.toastTimer);
+    ui.toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+  }
+
+  /**
+   * 연결 상태 표시를 바꾼다.
+   * @param {string} state 'open' | 'connecting' | 'closed'
+   * @returns {void}
+   */
+  function setConn(state) {
+    $('connDot').className = 'dot' + (state === 'open' ? ' on' : state === 'connecting' ? ' warn' : '');
+    $('connLabel').textContent = state === 'open' ? '연결됨' : state === 'connecting' ? '연결 중' : '재연결 중';
+  }
+
+  /**
+   * 서버로 메시지를 보낸다. 연결 전이면 방 만들기/참가 요청 하나만 보관했다가 연결되면 보낸다.
+   * @param {object} msg 메시지
+   * @returns {void}
+   */
+  function send(msg) {
+    if (net.open) net.ws.send(JSON.stringify(msg));
+    else if (msg.t === 'create' || msg.t === 'join') net.queued = msg;
+  }
+
+  /**
+   * 웹소켓에 연결하고, 끊기면 점점 간격을 늘려 다시 연결한다. 방에 있었다면 같은 토큰으로 자동 재참가한다.
+   * @returns {void}
+   */
+  function connect() {
+    setConn('connecting');
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
+    net.ws = ws;
+    ws.onopen = () => {
+      net.open = true;
+      net.retry = 0;
+      setConn('open');
+      if (net.code) ws.send(JSON.stringify({ t: 'join', code: net.code, token: getToken(), name: myName() }));
+      else if (net.queued) ws.send(JSON.stringify(net.queued));
+      net.queued = null;
+      clearInterval(net.pingTimer);
+      net.pingTimer = setInterval(() => send({ t: 'ping' }), 25000);
+    };
+    ws.onmessage = e => {
+      let msg;
+      try { msg = JSON.parse(e.data); } catch (err) { return; }
+      onMessage(msg);
+    };
+    ws.onclose = () => {
+      net.open = false;
+      clearInterval(net.pingTimer);
+      setConn('closed');
+      setTimeout(connect, Math.min(8000, 700 * 2 ** net.retry++));
+    };
+  }
+
+  /**
+   * 저장된 닉네임 (없으면 입력칸 값).
+   * @returns {string} 닉네임
+   */
+  function myName() {
+    return ($('nameIn').value || load('stud7-name', '')).trim().slice(0, 12) || '플레이어';
+  }
+
+  /**
+   * 주소창을 현재 방 코드에 맞춘다 (새로고침해도 같은 방으로).
+   * @param {string|null} code 방 코드
+   * @returns {void}
+   */
+  function setUrl(code) {
+    const url = code ? `${location.pathname}?room=${code}` : location.pathname;
+    history.replaceState(null, '', url);
+  }
+
+  /**
+   * 서버 메시지를 처리한다.
+   * @param {object} msg 메시지
+   * @returns {void}
+   */
+  function onMessage(msg) {
+    if (msg.t === 'joined') {
+      net.code = msg.code;
+      net.joining = false;
+      ui.sentAct = '';
+      $('abBtns').dataset.html = '';
+      setUrl(msg.code);
+    } else if (msg.t === 'state') {
+      ui.V = msg;
+      ui.offset = msg.serverNow - Date.now();
+      render();
+    } else if (msg.t === 'error') {
+      net.joining = false;
+      if (msg.code === 'noroom' || msg.code === 'replaced') {
+        net.code = null;
+        ui.V = null;
+        setUrl(null);
+        render();
+      }
+      $('homeErr').textContent = msg.msg;
+      if (msg.code !== 'noroom') toast(msg.msg);
+    } else if (msg.t === 'left') {
+      net.code = null;
+      ui.V = null;
+      setUrl(null);
+      render();
+    }
+  }
+
+  /**
+   * 방 만들기 / 참가 요청.
+   * @param {string|null} code 참가할 방 코드, null이면 새 방
+   * @returns {void}
+   */
+  function enter(code) {
+    const name = $('nameIn').value.trim();
+    if (!name) {
+      $('homeErr').textContent = '닉네임을 입력해 주세요.';
+      $('nameIn').focus();
+      return;
+    }
+    save('stud7-name', name);
+    $('homeErr').textContent = net.open ? '' : '서버에 연결하는 중이에요. 잠시만 기다려 주세요 (무료 서버는 깨어나는 데 1분쯤 걸려요).';
+    net.joining = true;
+    if (code) send({ t: 'join', code: code.toUpperCase(), token: getToken(), name });
+    else send({ t: 'create', token: getToken(), name });
+  }
+
+  /**
+   * 내 엔진 플레이어 (관전자면 null).
+   * @returns {object|null} 플레이어
+   */
+  function me() {
+    const V = ui.V;
+    if (!V || !V.game || V.you.playerId === null) return null;
+    return V.game.players.find(p => p.id === V.you.playerId) || null;
+  }
+
+  /**
+   * 엔진 플레이어 id로 이름을 찾는다 (나면 '나').
+   * @param {number} id 플레이어 id
+   * @returns {string} 이름
+   */
+  function nameOf(id) {
+    const p = ui.V.game.players.find(x => x.id === id);
+    if (!p) return '?';
+    return p.id === ui.V.you.playerId ? '나' : p.name;
+  }
+
+  /**
+   * 카드 한 장의 HTML. 처음 그려지는 카드에는 딜 애니메이션을 붙인다.
+   * @param {number|null} c 카드 정수, null이면 뒷면
+   * @param {string|null} key 애니메이션 중복 방지 키
+   * @returns {string} HTML
+   */
+  function cardHtml(c, key) {
+    const fresh = key && !ui.seenCards.has(key);
+    if (key) ui.seenCards.add(key);
+    const anim = fresh && !(ui.V && ui.V.game && ui.V.game.fast) ? ' deal' : '';
+    if (c === null || c === undefined) return `<span class="cd bk${anim}" aria-label="뒷면"></span>`;
+    const s = S.suitOf(c);
+    return `<span class="cd s${s}${anim}" aria-label="${S.cardLabel(c)}"><b>${S.RANK_LABELS[S.rankOf(c)]}</b><i>${S.SUIT_SYMBOLS[s]}</i></span>`;
+  }
+
+  /**
+   * 플레이어 카드를 히든/오픈 묶음으로 그린다.
+   * @param {object} p 화면 상태의 플레이어
+   * @param {boolean} labels 묶음 이름 표시 여부 (내 자리)
+   * @returns {string} HTML
+   */
+  function cardsHtml(p, labels) {
+    const hn = ui.V.game.handNo;
+    const down = [];
+    const up = [];
+    p.cards.forEach((x, i) => (x.up ? up : down).push(cardHtml(x.c, `${hn}-${p.id}-${i}`)));
+    if (labels) return `<div class="grp down"><small>히든</small><div>${down.join('')}</div></div><div class="grp up"><small>오픈</small><div>${up.join('')}</div></div>`;
+    return `<div class="grp down">${down.join('')}</div><div class="grp up">${up.join('')}</div>`;
+  }
+
+  /**
+   * 좌석 하나를 그린다.
+   * 구성: 이름(사람 표시·접속 점), 좌석 번호·브링인, 스택과 마지막 액션·남은 시간 배지, 카드, 베팅·쇼다운 결과
+   * @param {object} p 화면 상태의 플레이어
+   * @param {string} area 그리드 영역 이름
+   * @param {boolean} bottom 아래쪽 큰 자리 여부
+   * @returns {string} HTML
+   */
+  function seatHtml(p, area, bottom) {
+    const V = ui.V;
+    const h = V.game.hand;
+    const mine = p.id === V.you.playerId;
+    const practice = V.you.mode === 'practice';
+    const cls = ['seat'];
+    if (bottom) cls.push('bottom');
+    if (mine) cls.push('me');
+    if (h && h.actingSeat === p.seat && !h.done) cls.push('turn');
+    if (h && h.done && p.won > 0) cls.push('win');
+    if (p.busted && !(h && p.inHand)) cls.push('out');
+    const bi = h && h.street === 3 && h.bringInSeat === p.seat && !h.done ? ' · 브링인' : '';
+    const badges = [];
+    if (p.lastAction) {
+      const kind = /^(Raise|Bet|Complete)/.test(p.lastAction) ? ' agg' : p.lastAction === 'Fold' ? ' fold' : '';
+      badges.push(`<span class="badge${kind}">${esc(p.lastAction)}${p.allIn && !p.folded ? ' · 올인' : ''}</span>`);
+    } else if (p.allIn && !p.folded) {
+      badges.push('<span class="badge agg">올인</span>');
+    }
+    if (V.turn && V.turn.playerId === p.id && V.turn.deadline) badges.push(`<span class="badge time" data-deadline="${V.turn.deadline}"></span>`);
+    let cards = '';
+    if (p.busted && !(h && p.inHand)) {
+      cards = `<span class="muted">탈락 · ${p.place}위</span>`;
+    } else if (h && p.inHand) {
+      if (p.folded && !mine) {
+        cards = practice && p.cards.length ? `<div class="cards dim">${cardsHtml({ ...p, cards: p.cards.filter(x => x.up) }, false)}</div>` : '<div class="cards"><span class="muted">폴드</span></div>';
+      } else {
+        cards = `<div class="cards${p.folded ? ' dim' : ''}">${cardsHtml(p, mine)}</div>`;
+      }
+    }
+    const foot = [];
+    if (p.bet > 0 && h && !h.done) foot.push(`<span class="betpill"><i></i>${S.fmt(p.bet)}</span>`);
+    if (p.result) foot.push(`<span class="res">${esc(p.result)}</span>`);
+    if (h && h.done && p.won > 0) foot.push(`<span class="won">+${S.fmt(p.won)}</span>`);
+    const human = p.isHuman && !mine ? `<span class="tag">사람</span><i class="dot${p.connected ? ' on' : ''}" title="${p.connected ? '접속 중' : '연결 끊김'}"></i>` : '';
+    return `<div class="${cls.join(' ')}" style="grid-area:${area}">
+      <div class="top"><span class="nm">${mine ? '나 (You)' : esc(p.name)}${human}</span><span class="sn">Seat ${p.seat}${bi}</span></div>
+      <div class="line2"><span class="stk">${S.fmt(p.stack)}</span>${badges.join('')}</div>
+      ${cards}
+      ${foot.length ? `<div class="line2">${foot.join('')}</div>` : ''}
+    </div>`;
+  }
+
+  /**
+   * 테이블 가운데(스트리트, 팟, 진행 상황)를 그린다.
+   * @returns {string} HTML
+   */
+  function centerHtml() {
+    const g = ui.V.game;
+    const h = g.hand;
+    if (!h) return '<div class="center"><div class="pot"><small>POT</small><strong>0</strong></div></div>';
+    let status = '';
+    if (h.done) status = h.pots.map(pt => `${pt.winners.map(nameOf).map(esc).join(', ')} +${S.fmt(pt.amount)}`).join(' · ');
+    else if (ui.V.yourTurn) status = '당신 차례';
+    else {
+      const acting = g.players.find(p => p.seat === h.actingSeat);
+      if (acting) status = `${esc(acting.name)} ${acting.isHuman ? '차례' : '생각 중…'}`;
+    }
+    const sub = h.done ? `핸드 #${g.handNo} 종료` : `베트/레이즈 ${h.raises} / ${S.MAX_RAISE_LEVELS}`;
+    return `<div class="center">
+      <div class="street">${S.STREET_NAMES[h.street]} · ${h.street <= 4 ? '스몰' : '빅'} ${S.fmt(h.unit)}</div>
+      <div class="pot"><small>POT</small><strong>${S.fmt(h.pot)}</strong></div>
+      <div class="sub">${sub}</div>
+      <div class="status">${status}</div>
+    </div>`;
+  }
+
+  /**
+   * 테이블 전체를 그린다. 나(관전자면 첫 사람)를 아래에 두고 나머지를 시계방향으로 배치한다.
+   * @returns {void}
+   */
+  function renderTable() {
+    const V = ui.V;
+    const g = V && V.game;
+    if (!g) {
+      $('table').innerHTML = '<div class="center"><div class="pot"><small>POT</small><strong>0</strong></div><div class="status muted">대기 중</div></div>';
+      return;
+    }
+    if (ui.seenHand !== g.handNo) {
+      ui.seenHand = g.handNo;
+      ui.seenCards = new Set();
+    }
+    const ps = g.players;
+    let k = ps.findIndex(p => p.id === V.you.playerId);
+    if (k < 0) k = Math.max(0, ps.findIndex(p => p.isHuman));
+    const slots = SLOTS[ps.length - 1] || SLOTS[6];
+    const seats = [];
+    for (let j = 1; j < ps.length; j++) seats.push(seatHtml(ps[(k + j) % ps.length], slots[j - 1], false));
+    $('table').innerHTML = seats.join('') + centerHtml() + seatHtml(ps[k], 'me', true);
+  }
+
+  /**
+   * 상단 토너먼트 시계를 갱신한다.
+   * @returns {void}
+   */
+  function renderClock() {
+    const V = ui.V;
+    const g = V && V.game;
+    $('codeChip').hidden = !net.code;
+    $('codeChip').textContent = net.code ? `방 ${net.code}` : '';
+    $('leaveTop').hidden = !net.code;
+    $('modeBtn').hidden = !V;
+    if (V) $('modeBtn').textContent = V.you.mode === 'practice' ? '연습 모드' : '실전 모드';
+    if (!g) {
+      ['cLv', 'cAnte', 'cLim', 'cNext', 'cLeft', 'cAvg'].forEach(id => { $(id).textContent = '-'; });
+      return;
+    }
+    const idx = g.levelIndex;
+    const L = S.LEVELS[idx];
+    const nxt = S.LEVELS[Math.min(idx + 1, S.LEVELS.length - 1)];
+    const n = Math.max(g.handNo, 1);
+    const alive = g.players.filter(p => !p.busted).length;
+    $('cLv').textContent = idx + 1;
+    $('cAnte').textContent = `${S.fmt(L.ante)} / ${S.fmt(L.bringIn)}`;
+    $('cLim').textContent = `${S.fmt(L.small)}-${S.fmt(L.big)}`;
+    $('cNextL').textContent = `다음: ${S.fmt(nxt.small)}-${S.fmt(nxt.big)}`;
+    $('cNext').textContent = `${g.handsPerLevel - ((n - 1) % g.handsPerLevel)}핸드 후`;
+    $('cLeft').textContent = `${alive} / ${g.players.length}`;
+    $('cAvg').textContent = S.fmt((g.players.length * g.startingStack) / Math.max(alive, 1));
+  }
+
+  /**
+   * 내용이 바뀌었을 때만 innerHTML을 교체한다 (누르는 도중 버튼이 다시 그려져 클릭이 빠지는 것을 막음).
+   * @param {HTMLElement} el 대상 요소
+   * @param {string} html 새 HTML
+   * @returns {void}
+   */
+  function setHtml(el, html) {
+    if (el.dataset.html === html) return;
+    el.dataset.html = html;
+    el.innerHTML = html;
+    tick();
+  }
+
+  /**
+   * 액션 바를 그린다: 내 차례 버튼, 다음 핸드 준비, 탈락·관전 안내.
+   * @returns {void}
+   */
+  function renderActions() {
+    const V = ui.V;
+    const info = { set innerHTML(v) { setHtml($('abInfo'), v); }, set textContent(v) { setHtml($('abInfo'), esc(v)); } };
+    const btns = { set innerHTML(v) { setHtml($('abBtns'), v); } };
+    const g = V && V.game;
+    const p = me();
+    if (!g || !V) {
+      info.textContent = net.code ? '로비에서 대기 중' : '방에 들어가면 시작할 수 있어요';
+      btns.innerHTML = '';
+      return;
+    }
+    if (V.yourTurn) {
+      const h = g.hand;
+      const toCall = Math.max(0, h.currentBet - p.bet);
+      let txt = `<b>내 차례</b> · 팟 ${S.fmt(h.pot)}`;
+      if (toCall > 0) txt += ` · 콜 ${S.fmt(Math.min(toCall, p.stack))}`;
+      if (toCall > 0 && V.you.mode === 'practice') txt += ` · <em>필요 승률 ${(toCall / (h.pot + toCall) * 100).toFixed(1)}%</em>`;
+      if (V.turn && V.turn.deadline) txt += ` · 남은 시간 <em data-deadline="${V.turn.deadline}"></em>`;
+      info.innerHTML = txt;
+      const label = {
+        fold: () => ['Fold', '폴드 · F', ''],
+        check: () => ['Check', '체크 · C', 'call'],
+        call: a => [`Call ${S.fmt(a.amount)}`, `콜${a.allIn ? ' (올인)' : ''} · C`, 'call'],
+        bringin: a => [`Bring-in ${S.fmt(a.amount)}`, '브링인 · C', 'call'],
+        complete: a => [`Complete ${S.fmt(a.to)}`, `컴플리트${a.allIn ? ' (올인)' : ''} · R`, 'go'],
+        bet: a => [`Bet ${S.fmt(a.to)}`, `베트${a.allIn ? ' (올인)' : ''} · R`, 'go'],
+        raise: a => [`Raise → ${S.fmt(a.to)}`, `레이즈${a.allIn ? ' (올인)' : ''} · R`, 'go']
+      };
+      btns.innerHTML = V.yourTurn.legal.map((a, i) => {
+        const [main, sub, cls] = label[a.type](a);
+        return `<button class="btn ${cls}" type="button" data-i="${i}"><span>${main}</span><small>${sub}</small></button>`;
+      }).join('');
+      return;
+    }
+    const h = g.hand;
+    if (V.next && p && !p.busted) {
+      const result = p.won > 0 ? `내가 ${S.fmt(p.won)} 획득` : h && h.done ? h.pots.map(pt => `${pt.winners.map(nameOf).map(esc).join(', ')} 승`).join(' · ') : '';
+      const need = V.room.members.filter(m => m.connected && m.playerId !== null && !g.players.find(x => x.id === m.playerId).busted).length;
+      info.innerHTML = `핸드 #${g.handNo} 끝 · ${result} · <span class="muted">자동 진행 <span data-deadline="${V.next.deadline}"></span></span>`;
+      btns.innerHTML = V.next.you
+        ? `<span class="muted">다른 사람 기다리는 중 (${V.next.ready.length}/${need})</span>`
+        : '<button class="btn next" type="button" data-next="1"><span>다음 핸드 ▶</span><small>Enter</small></button>';
+      return;
+    }
+    btns.innerHTML = '';
+    if (V.room.phase === 'finished') info.textContent = '대회가 끝났어요';
+    else if (!p) info.textContent = '관전 중이에요. 다음 대회부터 참가할 수 있어요.';
+    else if (p.busted) info.textContent = g.fast ? `${p.place}위로 탈락 · 남은 대회를 빠르게 진행 중` : `${p.place}위로 탈락 · 관전 중`;
+    else if (h && p.folded && p.inHand) info.textContent = '이번 핸드는 폴드했어요 · 다른 사람 진행 중';
+    else {
+      const acting = h && g.players.find(x => x.seat === h.actingSeat);
+      info.textContent = acting ? `${acting.name} 차례` : '진행 중…';
+    }
+  }
+
+  /**
+   * 화면 상태를 엔진의 analyze()가 읽을 수 있는 모양으로 바꿔 힌트를 계산한다.
+   * @returns {object|null} 힌트 데이터
+   */
+  function computeHint() {
+    const V = ui.V;
+    const g = V.game;
+    const players = g.players.map(p => ({ ...p, cards: p.cards.filter(x => x.c !== null && x.c !== undefined) }));
+    const self = players.find(p => p.id === V.you.playerId);
+    if (!self) return null;
+    const fake = {
+      hand: { currentBet: g.hand.currentBet, deadUp: g.hand.deadUp },
+      players,
+      live() { return players.filter(p => p.inHand && !p.folded); },
+      upCards(p) { return p.cards.filter(x => x.up).map(x => x.c); },
+      potTotal() { return g.hand.pot; }
+    };
+    return S.analyze(fake, self, 1500);
+  }
+
+  /**
+   * 힌트 패널을 그린다 (연습 모드에서만).
+   * @returns {void}
+   */
+  function renderHint() {
+    const V = ui.V;
+    const practice = !!V && V.you.mode === 'practice';
+    $('hintPanel').hidden = !practice;
+    if (!practice) return;
+    $('hintBtn').disabled = !V.yourTurn;
+    const a = ui.hint;
+    const out = $('hintOut');
+    if (!a) {
+      out.innerHTML = '';
+      return;
+    }
+    const isBringIn = V.yourTurn && V.yourTurn.legal.some(x => x.type === 'bringin');
+    const verdict = isBringIn ? '브링인은 강제 베팅이라 폴드할 수 없어요. 브링인만 낼지 complete할지 고르세요' : a.toCall === 0 ? '체크로 공짜 카드를 볼 수 있어요' : a.eq >= a.need ? '추정 승률이 필요 승률보다 높아요' : '추정 승률이 필요 승률보다 낮아요';
+    const rows = [`<div class="kv"><span>지금 내 패</span><span>${a.current}</span></div>`];
+    rows.push(`<div><div class="kv"><span>추정 승률 (상대 ${a.opponents}명)</span><span class="big">${(a.eq * 100).toFixed(0)}%</span></div>
+      <div class="meter"><i style="width:${Math.min(100, a.eq * 100).toFixed(1)}%"></i>${a.toCall ? `<b style="left:${(a.need * 100).toFixed(1)}%"></b>` : ''}</div>
+      <p class="muted">${a.toCall ? `빨간 선 = 필요 승률 ${(a.need * 100).toFixed(1)}% (콜 ${S.fmt(a.toCall)} ÷ 콜 후 팟 ${S.fmt(a.pot + a.toCall)}) · ` : ''}${verdict}. 상대 히든을 무작위로 가정한 값이라 실제보다 낙관적일 수 있어요.</p></div>`);
+    if (a.nextStreet) rows.push(`<div class="kv"><span>${a.nextStreet}에 족보가 오르는 카드</span><span>${a.improving}장 / ${a.unseen}장 (${(a.improving / a.unseen * 100).toFixed(0)}%)</span></div>`);
+    a.ranks.forEach(r => rows.push(`<div class="kv"><span>${r.label}: 내가 ${r.mine}장, 남의 오픈에 ${r.seen}장</span><span>${r.left}장 남음</span></div>`));
+    a.suits.forEach(s => rows.push(`<div class="kv"><span>${s.symbol}: 내가 ${s.mine}장, 남의 오픈에 ${s.seen}장</span><span>${s.left}장 남음</span></div>`));
+    out.innerHTML = rows.join('');
+  }
+
+  /**
+   * 죽은 카드 패널을 그린다.
+   * @returns {void}
+   */
+  function renderDead() {
+    const V = ui.V;
+    const practice = !V || V.you.mode === 'practice';
+    $('deadNote').textContent = practice ? '이번 핸드에서 폴드한 사람의 오픈 카드' : '실전 모드: 폴드한 카드는 직접 기억하세요';
+    const cards = practice && V && V.game && V.game.hand ? V.game.hand.deadUp.slice().sort((a, b) => a - b) : [];
+    $('dead').innerHTML = cards.length ? cards.map(c => cardHtml(c, null)).join('') : practice ? '<span class="muted">아직 없음</span>' : '';
+  }
+
+  /**
+   * 핸드 기록을 그린다. 사용자가 위로 스크롤했으면 위치를 유지한다.
+   * @returns {void}
+   */
+  function renderLog() {
+    const el = $('log');
+    const log = ui.V && ui.V.game ? ui.V.game.log : [];
+    el.innerHTML = log.map(l => `<div class="${l.kind ? 'l-' + l.kind : ''}">${esc(l.text)}</div>`).join('');
+    if (ui.logStick) el.scrollTop = el.scrollHeight;
+  }
+
+  /**
+   * 로비 화면을 그린다: 방 코드·초대 링크, 참가자, 내 모드, 대회 설정(방장만 수정), 시작 버튼.
+   * @returns {void}
+   */
+  function renderLobby() {
+    const V = ui.V;
+    const room = V.room;
+    const isHost = V.you.host;
+    const link = `${location.origin}${location.pathname}?room=${room.code}`;
+    $('lbCode').textContent = room.code;
+    $('lbLink').textContent = link;
+    const players = room.members.filter(m => !m.spectator);
+    $('lbTitle').textContent = `참가자 ${players.length}명`;
+    $('lbMembers').innerHTML = room.members.map(m => `<li><i class="dot${m.connected ? ' on' : ''}"></i><span class="grow">${esc(m.name)}${m.clientId === V.you.clientId ? ' (나)' : ''}</span>${m.clientId === room.hostId ? '<span class="tag">방장</span>' : ''}${m.spectator ? '<span class="tag">관전</span>' : ''}<span class="muted">${m.mode === 'real' ? '실전' : '연습'}</span></li>`).join('');
+    document.querySelectorAll('#modeSeg input').forEach(el => { el.checked = el.value === V.you.mode; });
+    const s = room.settings;
+    const maxAi = Math.max(0, 7 - players.length);
+    $('setAis').innerHTML = Array.from({ length: maxAi + 1 }, (_, i) => `<option value="${i}">${i}명${i === 0 ? ' (사람끼리)' : ''}</option>`).join('');
+    $('setAis').value = String(s.ais);
+    $('setTurn').value = String(s.turnSecs);
+    $('setHpl').value = String(s.hpl);
+    $('setSpeed').value = s.speed;
+    ['setAis', 'setTurn', 'setHpl', 'setSpeed'].forEach(id => { $(id).disabled = !isHost; });
+    $('setNote').textContent = isHost ? '' : '· 방장만 바꿀 수 있어요';
+    const total = players.length + s.ais;
+    $('startBtn').hidden = !isHost;
+    $('startBtn').disabled = total < 2;
+    $('startBtn').textContent = `대회 시작 (${total}명)`;
+    $('lbNote').textContent = isHost
+      ? (total < 2 ? '혼자라면 컴퓨터 상대를 1명 이상 넣어 주세요.' : '친구에게 초대 링크를 보내고, 다 모이면 시작하세요.')
+      : '방장이 대회를 시작하기를 기다리는 중이에요.';
+  }
+
+  /**
+   * 최종 순위 창을 그린다.
+   * @returns {void}
+   */
+  function renderEnd() {
+    const V = ui.V;
+    const g = V.game;
+    const pool = BUY_IN * g.players.length;
+    const pay = V.room.payout || [];
+    const p = me();
+    const rows = g.players.slice().sort((a, b) => a.place - b.place).map(x => `<tr class="${x.id === V.you.playerId ? 'me' : ''}"><td>${x.place}위</td><td>${x.id === V.you.playerId ? '나' : esc(x.name)}${x.isHuman ? ' <span class="tag">사람</span>' : ''}</td><td class="n">${pay[x.place - 1] ? '$' + S.fmt(pool * pay[x.place - 1]) : '-'}</td></tr>`).join('');
+    const title = p ? (p.place === 1 ? '우승!' : `최종 ${p.place}위`) : '대회 종료';
+    $('endDlg').innerHTML = `<h2>${title}</h2>
+      <p>${g.handNo}핸드 만에 끝났어요. 가상 바이인 $${S.fmt(BUY_IN)} × ${g.players.length}명, 상금 풀 $${S.fmt(pool)}.</p>
+      <table class="st"><tbody>${rows}</tbody></table>
+      <div class="row">${V.you.host ? '<button class="btn next" type="button" id="rematchBtn">같은 방에서 한 판 더</button>' : '<span class="muted">방장이 한 판 더를 누르면 로비로 돌아가요.</span>'}<button class="btn" type="button" id="endLeave">나가기</button></div>`;
+  }
+
+  /**
+   * 화면 전체를 다시 그리고, 상황에 맞는 창(홈/로비/결과)을 띄운다.
+   * @returns {void}
+   */
+  function render() {
+    const V = ui.V;
+    const inRoom = !!(net.code && V);
+    $('ovHome').hidden = inRoom;
+    $('ovLobby').hidden = !(inRoom && V.room.phase === 'lobby');
+    const endShown = inRoom && V.room.phase === 'finished' && V.game;
+    if (endShown && $('ovEnd').hidden) renderEnd();
+    $('ovEnd').hidden = !endShown;
+    if (inRoom && V.room.phase === 'lobby') renderLobby();
+    if (!V || !V.yourTurn) ui.hint = null;
+    renderClock();
+    renderTable();
+    renderActions();
+    renderHint();
+    renderDead();
+    renderLog();
+    tick();
+  }
+
+  /**
+   * data-deadline이 붙은 요소에 남은 초를 표시한다 (서버 시각 기준).
+   * @returns {void}
+   */
+  function tick() {
+    const now = Date.now() + ui.offset;
+    document.querySelectorAll('[data-deadline]').forEach(el => {
+      const left = Math.max(0, Math.ceil((Number(el.dataset.deadline) - now) / 1000));
+      el.textContent = `${left}초`;
+    });
+  }
+
+  /**
+   * 내 액션을 서버에 보낸다 (같은 차례에 중복 전송 방지).
+   * @param {number} i legal 배열 인덱스
+   * @returns {void}
+   */
+  function act(i) {
+    const V = ui.V;
+    if (!V || !V.yourTurn) return;
+    const a = V.yourTurn.legal[i];
+    if (!a) return;
+    const key = `${V.yourTurn.handNo}-${V.game.hand.street}-${V.game.hand.raises}-${V.game.hand.currentBet}-${a.type}`;
+    if (key === ui.sentAct) return;
+    ui.sentAct = key;
+    send({ t: 'act', handNo: V.yourTurn.handNo, i, type: a.type });
+    $('abBtns').querySelectorAll('button').forEach(b => { b.disabled = true; });
+  }
+
+  /**
+   * 다음 핸드 준비를 보낸다.
+   * @returns {void}
+   */
+  function ready() {
+    if (ui.V && ui.V.next && !ui.V.next.you) send({ t: 'ready' });
+  }
+
+  /**
+   * 초대 링크를 복사한다 (실패하면 링크를 선택해 둔다).
+   * @returns {void}
+   */
+  function copyLink() {
+    const link = `${location.origin}${location.pathname}?room=${net.code}`;
+    const fallback = () => {
+      const r = document.createRange();
+      r.selectNodeContents($('lbLink'));
+      const sel = getSelection();
+      sel.removeAllRanges();
+      sel.addRange(r);
+      toast('링크를 선택해 뒀어요. 복사해서 보내 주세요.');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(() => toast('초대 링크를 복사했어요'), fallback);
+    } else {
+      fallback();
+    }
+  }
+
+  /**
+   * 방에서 나간다.
+   * @returns {void}
+   */
+  function leave() {
+    send({ t: 'leave' });
+    net.code = null;
+    ui.V = null;
+    setUrl(null);
+    render();
+  }
+
+  /**
+   * 버튼·입력·키보드 이벤트를 연결한다.
+   * @returns {void}
+   */
+  function bind() {
+    $('createBtn').addEventListener('click', () => enter(null));
+    $('joinBtn').addEventListener('click', () => {
+      const code = $('codeIn').value.trim();
+      if (code.length < 5) {
+        $('homeErr').textContent = '5자리 방 코드를 입력해 주세요.';
+        return;
+      }
+      enter(code);
+    });
+    $('homeForm').addEventListener('submit', e => {
+      e.preventDefault();
+      if ($('codeIn').value.trim().length === 5) enter($('codeIn').value.trim());
+      else enter(null);
+    });
+    $('copyBtn').addEventListener('click', copyLink);
+    $('codeChip').addEventListener('click', copyLink);
+    $('leaveBtn').addEventListener('click', leave);
+    $('leaveTop').addEventListener('click', leave);
+    $('modeSeg').addEventListener('change', e => send({ t: 'mode', mode: e.target.value }));
+    $('modeBtn').addEventListener('click', () => {
+      if (ui.V) send({ t: 'mode', mode: ui.V.you.mode === 'practice' ? 'real' : 'practice' });
+    });
+    const setting = (id, key, num) => $(id).addEventListener('change', e => send({ t: 'settings', patch: { [key]: num ? Number(e.target.value) : e.target.value } }));
+    setting('setAis', 'ais', true);
+    setting('setTurn', 'turnSecs', true);
+    setting('setHpl', 'hpl', true);
+    setting('setSpeed', 'speed', false);
+    $('startBtn').addEventListener('click', () => send({ t: 'start' }));
+    $('endDlg').addEventListener('click', e => {
+      if (e.target.closest('#rematchBtn')) send({ t: 'rematch' });
+      if (e.target.closest('#endLeave')) leave();
+    });
+    $('abBtns').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.next) ready();
+      else act(Number(b.dataset.i));
+    });
+    $('hintBtn').addEventListener('click', () => {
+      if (!ui.V || !ui.V.yourTurn) return;
+      ui.hint = computeHint();
+      renderHint();
+      renderLog();
+    });
+    $('log').addEventListener('scroll', () => {
+      const el = $('log');
+      ui.logStick = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+    });
+    document.addEventListener('keydown', e => {
+      if (!$('ovHome').hidden || !$('ovLobby').hidden || !$('ovEnd').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.target.closest && e.target.closest('input,select,textarea')) return;
+      const V = ui.V;
+      if (!V) return;
+      const key = e.key.toLowerCase();
+      if ((key === 'enter' || key === ' ') && V.next) {
+        e.preventDefault();
+        ready();
+        return;
+      }
+      if (key === 'h' && V.yourTurn && V.you.mode === 'practice') {
+        $('hintBtn').click();
+        return;
+      }
+      if (!V.yourTurn) return;
+      const L = V.yourTurn.legal;
+      const map = { f: ['fold'], c: ['check', 'call', 'bringin'], b: ['bringin'], r: ['complete', 'bet', 'raise'] };
+      const i = map[key] ? L.findIndex(a => map[key].includes(a.type)) : -1;
+      if (i >= 0) {
+        e.preventDefault();
+        act(i);
+      }
+    });
+    setInterval(tick, 250);
+  }
+
+  /**
+   * 첫 화면: 저장된 닉네임과 주소창의 방 코드를 채우고, 둘 다 있으면 자동으로 다시 참가한다.
+   * @returns {void}
+   */
+  function boot() {
+    bind();
+    $('nameIn').value = load('stud7-name', '');
+    const code = (new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
+    if (code) {
+      $('codeIn').value = code;
+      $('joinBtn').classList.add('next');
+      $('createBtn').classList.remove('next');
+      $('joinBtn').textContent = `${code} 방 참가`;
+      if ($('nameIn').value.trim()) {
+        net.code = code;
+        net.joining = true;
+      }
+    }
+    render();
+    connect();
+    ($('nameIn').value ? (code ? $('joinBtn') : $('createBtn')) : $('nameIn')).focus();
+  }
+
+  boot();
+}
+</script>
+</body>
+</html>

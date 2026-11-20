@@ -9,264 +9,315 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* VOICE everyday game: calm card-room focus, every rule visible while you play
-   IDEA a tournament stud table with the floor's tournament clock hung above it, and a lobby card like a seat ticket
-   PICTURE the felt table itself: opponents on the rail, you across the bottom, pot in the middle
-   COLOUR deep felt green ground, walnut rail, ivory cards in a four-colour deck, chip red for raises, brass for the pot and the player to act
+/* VOICE everyday game: calm card-room focus, only what the decision needs on screen
+   IDEA a tournament stud table with the floor's one-line tournament clock above it and the table talk beside it
+   PICTURE the felt table itself: opponents on the rail, you across the bottom, pot and dead cards in the middle
+   COLOUR deep felt green ground, walnut rail, ivory cards in a four-colour deck, chip red for raises, brass for the pot, your turn and your chat
    TYPE Barlow Condensed for the clock, room code, card ranks and chip counts + IBM Plex Sans KR for everything written
-   LAYOUT laptop: clock bar, table with action bar under it, side column for hint, dead cards and log; under 760px: seats as a list, pot, you, sticky action bar, panels */
-:root{color-scheme:dark;--room:#0a3122;--felt:#127048;--felt-2:#0c5236;--rail:#4a2b17;--rail-2:#6e4427;--ink:#f4f0e6;--muted:#b9cbbf;--panel:rgba(3,24,15,.74);--line:rgba(244,240,230,.15);--brass:#e3b75b;--chip:#d6453a;--ok:#5fd18b;--card:#fbf8ef;--spade:#15171b;--heart:#c8102e;--diamond:#1d5fc4;--club:#17803e;--ocw:clamp(22px,2.15vw,28px);--mcw:46px}
+   LAYOUT laptop: clock bar, table with action bar under it, chat column with the hand log folded below; under 1100px: table, sticky action bar with a chat button, chat as a bottom sheet */
+:root{color-scheme:dark;--room:#0a2c1f;--bar:#06231a;--felt:#127048;--felt-2:#0b4630;--rail:#4a2b17;--rail-2:#6e4427;--ink:#f4f0e6;--muted:#b9cbbf;--panel:rgba(3,24,15,.78);--line:rgba(244,240,230,.14);--brass:#e3b75b;--chip:#d6453a;--ok:#5fd18b;--card:#fbf8ef;--spade:#15171b;--heart:#c8102e;--diamond:#1d5fc4;--club:#17803e;--ocw:clamp(28px,2.75vw,38px);--mcw:64px}
 *{box-sizing:border-box;min-width:0}
 [hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--room);color:var(--ink);font:15px/1.5 'IBM Plex Sans KR',system-ui,sans-serif;overflow-x:clip}
 button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
 .app{min-height:100%;display:grid;grid-template-rows:auto minmax(0,1fr)}
-.clock{display:flex;flex-wrap:wrap;background:#06231a;border-bottom:1px solid var(--line)}
-.brand{padding:10px 18px;display:grid;align-content:center}
-.brand h1{margin:0;font:700 22px/1.05 'Barlow Condensed',sans-serif;letter-spacing:.01em}
-.brand span{color:var(--muted);font-size:13px}
-.cell{padding:8px 16px;border-left:1px solid var(--line);display:grid;align-content:center}
-.cell span{color:var(--muted);font-size:13px;white-space:nowrap}
-.cell b{font:700 22px/1.1 'Barlow Condensed',sans-serif;white-space:nowrap}
-.cell.lv b{font-size:30px;color:var(--brass)}
-.tools{margin-left:auto;display:flex;gap:8px;align-items:center;padding:8px 14px;flex-wrap:wrap}
-.conn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap}
-.dot{width:9px;height:9px;border-radius:50%;background:#7d8b83;flex:none}
+.bar{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;padding:10px max(16px,1.6vw);background:var(--bar);border-bottom:1px solid rgba(244,240,230,.12)}
+.brand{font:700 22px/1 'Barlow Condensed',sans-serif}
+.roomchip{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:4px 12px;border-radius:10px;border:1px solid rgba(244,240,230,.18);background:transparent;font:700 18px 'Barlow Condensed',sans-serif;letter-spacing:.08em}
+.dot{width:8px;height:8px;border-radius:50%;background:#7d8b83;flex:none;display:inline-block}
 .dot.on{background:var(--ok)}
 .dot.warn{background:var(--brass)}
-.main{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:14px;padding:14px max(16px,1.6vw)}
-.play{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:12px}
-.side{display:flex;flex-direction:column;gap:12px}
-.table{position:relative;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,1.25fr);grid-template-areas:"lt tc rt" "lm mid rm" "lb mid rb" "me me me";gap:12px 20px;padding:26px 26px 20px;align-content:space-between;min-height:460px}
-.table::before{content:"";position:absolute;inset:6px;border-radius:130px;background:radial-gradient(ellipse at 50% 38%,#18825a 0,var(--felt) 45%,var(--felt-2) 100%);border:14px solid var(--rail);box-shadow:inset 0 0 0 2px var(--rail-2),inset 0 10px 40px rgba(0,0,0,.35),0 16px 40px rgba(0,0,0,.4)}
-.table>*{position:relative}
+.lvl{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.lvl .lv{font:700 30px/1 'Barlow Condensed',sans-serif;color:var(--brass)}
+.lvl .lim{font:700 22px/1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.lvl span,.nextlv,.handno{color:var(--muted);font-size:14px;white-space:nowrap}
+.nextlv{display:flex;align-items:center;gap:8px}
+.pips{display:inline-flex;gap:3px}
+.pips i{width:14px;height:6px;border-radius:3px;background:rgba(244,240,230,.18)}
+.pips i.on{background:var(--brass)}
+.handno b{color:var(--ink)}
+.tools{margin-left:auto;display:flex;align-items:center;gap:8px}
+.conn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);white-space:nowrap}
+.tbtn{min-height:40px;padding:4px 14px;border-radius:10px;border:1px solid rgba(244,240,230,.18);background:transparent;font-weight:600;font-size:14px}
+.tbtn.mode{border-color:rgba(227,183,91,.5);background:rgba(227,183,91,.12);color:var(--brass)}
+.tbtn.icon{width:40px;padding:0;display:grid;place-items:center}
+.menu{position:absolute;right:max(16px,1.6vw);top:calc(100% + 6px);z-index:30;min-width:220px;display:grid;padding:6px;border-radius:12px;background:#0b3a28;border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5)}
+.menu button{min-height:44px;padding:8px 12px;border:0;border-radius:8px;background:transparent;text-align:left;font-weight:500}
+.menu button:hover{background:rgba(244,240,230,.08)}
+.main{display:flex;flex-wrap:wrap;gap:14px;padding:14px max(16px,1.6vw)}
+.play{position:relative;flex:999 1 640px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.side{flex:1 1 320px;max-width:400px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.table{position:relative;flex:1;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,.8fr) minmax(0,1.25fr);grid-template-areas:"lt tc rt" "lm mid rm" "lb mid rb" "me me me";gap:12px 22px;padding:26px 30px 22px;align-content:space-between;min-height:520px;border-radius:140px;background:radial-gradient(ellipse at 50% 38%,#18825a 0,var(--felt) 48%,var(--felt-2) 100%);border:14px solid var(--rail);box-shadow:inset 0 0 0 2px var(--rail-2),inset 0 10px 40px rgba(0,0,0,.35),0 16px 40px rgba(0,0,0,.35)}
 .seat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px 9px;display:grid;gap:5px;align-self:center;transition:box-shadow .2s,border-color .2s}
-.seat .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.seat .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px}
-.sn{font:600 13px 'Barlow Condensed',sans-serif;color:var(--muted);white-space:nowrap}
+.sn{font:600 13px 'Barlow Condensed',sans-serif;color:var(--muted);white-space:nowrap;display:inline-flex;align-items:center;gap:8px}
 .line2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .stk{font:700 20px/1 'Barlow Condensed',sans-serif;white-space:nowrap}
 .badge{font:600 13px/1 'Barlow Condensed',sans-serif;padding:4px 8px;border-radius:99px;background:rgba(244,240,230,.12);white-space:nowrap}
 .badge.agg{background:var(--chip)}
-.badge.fold{background:transparent;border:1px solid var(--line);color:var(--muted)}
-.badge.time{background:var(--brass);color:#1b1407}
+.badge.fold{background:transparent;border:1px solid rgba(244,240,230,.2);color:var(--muted)}
+.badge.time{background:var(--brass);color:#1b1407;font-size:14px}
 .tag{font-size:12px;line-height:1;padding:3px 6px;border-radius:6px;background:rgba(227,183,91,.18);color:var(--brass);font-weight:600}
 .betpill{display:inline-flex;align-items:center;gap:5px;font:700 15px/1 'Barlow Condensed',sans-serif;white-space:nowrap}
 .betpill i{width:13px;height:13px;border-radius:50%;background:radial-gradient(circle,var(--ink) 0 28%,var(--chip) 30% 100%);box-shadow:0 0 0 2px rgba(0,0,0,.25)}
-.seat.turn{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass),0 0 26px rgba(227,183,91,.4)}
+.seat.turn{border-color:var(--brass);box-shadow:0 0 0 2px var(--brass),0 0 26px rgba(227,183,91,.38)}
 .seat.win{border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
-.seat.out{opacity:.5}
-.seat .res{font-size:13px;color:var(--brass);font-weight:600}
+.seat.folded,.seat.out{opacity:.55}
+.res{font-size:13px;color:var(--brass);font-weight:600}
 .won{color:var(--brass);font:700 16px/1 'Barlow Condensed',sans-serif}
-.cards{display:flex;gap:7px;align-items:flex-end;min-height:calc(var(--ocw)*1.4)}
-.grp{display:flex;gap:2px}
-.grp.down{padding-right:7px;border-right:1px dashed rgba(244,240,230,.28)}
+.cards{display:flex;gap:10px;align-items:flex-end;min-height:calc(var(--ocw)*1.4)}
+.grp{display:flex;gap:4px}
+.grp.down{gap:0}
 .grp.down:empty{display:none}
-.cards.dim{opacity:.38}
+.fan{display:flex}
+.fan .cd+.cd{margin-left:calc(var(--cw)*-.63)}
+.fan.open .cd+.cd{margin-left:calc(var(--cw)*-.28)}
 .muted{color:var(--muted)}
-.cd{--cw:var(--ocw);width:var(--cw);height:calc(var(--cw)*1.4);border-radius:4px;background:var(--card);color:var(--spade);display:grid;place-content:center;justify-items:center;line-height:.9;box-shadow:0 1px 0 rgba(0,0,0,.4);font-family:'Barlow Condensed',sans-serif;flex:none}
-.cd b{font-weight:700;font-size:calc(var(--cw)*.6)}
-.cd i{font-style:normal;font-size:calc(var(--cw)*.5)}
+.cd{--cw:var(--ocw);position:relative;display:block;width:var(--cw);height:calc(var(--cw)*1.4);border-radius:calc(var(--cw)*.13);background:linear-gradient(#fffdf6,#f1ecdd);border:1px solid rgba(0,0,0,.08);box-shadow:0 1px 0 rgba(0,0,0,.2),0 3px 8px rgba(0,0,0,.35);color:var(--spade);font-family:'Barlow Condensed',sans-serif;flex:none;overflow:hidden}
+.cd b{position:absolute;top:calc(var(--cw)*.02);left:calc(var(--cw)*.1);font-weight:700;font-size:calc(var(--cw)*.6);line-height:1;letter-spacing:-.02em}
+.cd i{position:absolute;left:0;right:0;bottom:calc(var(--cw)*.05);text-align:center;font-style:normal;font-size:calc(var(--cw)*.74);line-height:1}
 .cd.s0{color:var(--club)}.cd.s1{color:var(--diamond)}.cd.s2{color:var(--heart)}.cd.s3{color:var(--spade)}
-.cd.bk{background:repeating-linear-gradient(135deg,#9a291f 0 4px,#b9392c 4px 8px);border:2px solid var(--card)}
+.cd.bk{background:repeating-linear-gradient(135deg,#9a291f 0 4px,#b9392c 4px 8px);border:calc(var(--cw)*.08) solid var(--card)}
 .cd.deal{animation:deal .3s ease-out}
 @keyframes deal{from{transform:translateY(-12px) scale(.88);opacity:0}}
 .seat.bottom{grid-area:me;justify-self:center;width:min(100%,560px);padding:10px 14px 12px}
 .me .cd{--cw:var(--mcw)}
-.me .cards{min-height:calc(var(--mcw)*1.4 + 20px)}
 .me .grp{flex-direction:column;align-items:flex-start;gap:4px}
 .me .grp>div{display:flex;gap:4px}
+.me .grp>div.fan{gap:0}
 .me .grp small{color:var(--muted);font-size:13px;line-height:1}
-.center{grid-area:mid;display:grid;justify-items:center;align-content:center;text-align:center;gap:6px;padding:8px}
+.me .fan .cd:nth-child(odd){transform:rotate(-3deg)}
+.me .fan .cd:nth-child(even){transform:rotate(3deg)}
+.mebody{display:flex;align-items:flex-end;justify-content:space-between;gap:12px 16px;flex-wrap:wrap}
+.mestk{text-align:right}
+.mestk b{display:block;font:700 28px/1 'Barlow Condensed',sans-serif}
+.mestk span{font-size:13px;color:var(--muted)}
+.center{grid-area:mid;display:grid;justify-items:center;align-content:center;text-align:center;gap:7px;padding:6px}
 .street{font:600 16px/1.1 'Barlow Condensed',sans-serif;color:var(--muted)}
-.pot small{display:block;font:600 14px/1 'Barlow Condensed',sans-serif;color:var(--brass)}
-.pot strong{font:700 clamp(30px,3.4vw,44px)/1 'Barlow Condensed',sans-serif;color:var(--brass)}
-.center .sub{font-size:13px;color:var(--muted)}
+.potlbl{font:600 14px/1 'Barlow Condensed',sans-serif;color:var(--brass)}
+.pot{font:700 clamp(34px,3.6vw,52px)/1 'Barlow Condensed',sans-serif;color:var(--brass)}
+.raises{display:flex;gap:5px}
+.raises i{width:9px;height:9px;border-radius:50%;border:1.5px solid rgba(244,240,230,.4)}
+.raises i.on{background:var(--chip);border-color:var(--chip)}
+.deadrow{display:grid;justify-items:center;gap:5px;margin-top:4px}
+.deadrow small{font-size:13px;color:var(--muted)}
+.deadrow div{display:flex;flex-wrap:wrap;justify-content:center;gap:3px;max-width:220px}
+.deadrow .cd{--cw:22px}
 .center .status{font-size:14px;font-weight:600;min-height:21px}
-.actionbar{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:#06231a;border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.actionbar{position:sticky;bottom:8px;z-index:20;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--bar);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .ab-info{font-size:15px}
 .ab-info em{font-style:normal;color:var(--brass);font-weight:600}
-.ab-btns{display:flex;flex-wrap:wrap;gap:8px}
-.btn{min-height:44px;padding:6px 16px;border-radius:10px;border:1px solid var(--line);background:rgba(244,240,230,.09);display:inline-grid;justify-items:center;align-content:center;line-height:1.15;cursor:pointer;font-weight:600}
-.btn small{font-weight:500;font-size:13px;opacity:.75}
-.btn:hover{background:rgba(244,240,230,.16)}
-.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+.ab-btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{min-height:48px;padding:6px 18px;border-radius:10px;border:1px solid rgba(244,240,230,.2);background:rgba(244,240,230,.08);display:inline-grid;justify-items:center;align-content:center;line-height:1.15;font-weight:600;font-size:16px}
+.btn small{font-weight:500;font-size:12px;opacity:.72}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible,.tbtn:focus-visible,.roomchip:focus-visible,input:focus-visible,select:focus-visible,.chip:focus-visible,summary:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
 .btn.call{background:var(--card);color:#10251a;border-color:transparent}
-.btn.go{background:var(--chip);border-color:transparent}
+.btn.go{background:var(--chip);color:#fff;border-color:transparent}
 .btn.next{background:var(--brass);color:#1b1407;border-color:transparent;padding-inline:22px}
+.btn.ghost{background:transparent;border-color:rgba(227,183,91,.45);color:var(--brass);font-size:15px}
 .btn:disabled{opacity:.45;cursor:default}
-.btn.sm{min-height:36px;padding:4px 12px;font-size:14px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
-.panel h2{margin:0 0 6px;font:700 18px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.01em}
-.panel p{margin:4px 0}
-.hint-out{display:grid;gap:6px;margin-top:8px;font-size:14px}
-.hint-out .big{font:700 26px/1 'Barlow Condensed',sans-serif}
+.chatbtn{position:relative;display:none}
+.chatbtn svg{display:block}
+.unread{position:absolute;top:5px;right:8px;min-width:18px;height:18px;border-radius:9px;background:var(--chip);color:#fff;font:700 12px/18px 'Barlow Condensed',sans-serif;text-align:center;padding:0 4px}
+.hintpop{position:absolute;right:0;bottom:calc(100% + 8px);z-index:6;width:min(380px,100%);padding:14px;border-radius:14px;background:#0b3a28;border:1px solid var(--line);box-shadow:0 20px 50px rgba(0,0,0,.5);display:grid;gap:8px;font-size:14px}
+.hintpop .hd{display:flex;justify-content:space-between;align-items:center}
+.hintpop h2{margin:0;font:700 20px/1 'Barlow Condensed',sans-serif}
+.big{font:700 26px/1 'Barlow Condensed',sans-serif}
 .meter{height:8px;border-radius:9px;background:rgba(244,240,230,.12);position:relative;overflow:hidden}
 .meter i{position:absolute;inset:0 auto 0 0;background:var(--brass);border-radius:9px}
 .meter b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--chip)}
 .kv{display:flex;justify-content:space-between;gap:10px}
 .kv span:last-child{white-space:nowrap;font-weight:600}
-.dead{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
-.dead .cd{--cw:24px}
-.log{overflow:auto;max-height:320px;font-size:14px;display:grid;gap:2px;align-content:start}
-.log div{padding:1px 0}
-.log .l-head{margin-top:8px;font-weight:700;color:var(--ink)}
+.hintpop p{margin:0;color:var(--muted)}
+.chat{flex:1;min-height:420px;display:flex;flex-direction:column;border-radius:14px;border:1px solid var(--line);background:var(--panel);overflow:hidden}
+.chat-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(244,240,230,.1)}
+.chat-head h2{margin:0;font:700 20px/1 'Barlow Condensed',sans-serif}
+.chat-head .online{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-right:auto;margin-left:10px}
+.chat-close{display:none}
+.chat-list{flex:1;min-height:0;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.chat-list .empty{margin:auto;color:var(--muted);font-size:14px;text-align:center}
+.cm{display:flex;flex-direction:column;gap:3px;max-width:84%;align-items:flex-start}
+.cm .who{font-size:12px;color:var(--muted);margin-top:6px}
+.cm .bub{padding:7px 12px;border-radius:4px 14px 14px 14px;background:rgba(244,240,230,.1);overflow-wrap:anywhere;white-space:pre-wrap}
+.cm.mine{align-self:flex-end;align-items:flex-end}
+.cm.mine .bub{border-radius:14px 4px 14px 14px;background:var(--brass);color:#1b1407}
+.cm.sys{align-self:center;max-width:100%;text-align:center;font-size:13px;color:var(--muted);margin:4px 0}
+.chat-foot{padding:10px 12px 12px;border-top:1px solid rgba(244,240,230,.1);display:grid;gap:8px}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chip{flex:none;min-height:36px;padding:4px 12px;border-radius:99px;border:1px solid rgba(244,240,230,.2);background:transparent;font-size:14px}
+.chip:hover{background:rgba(244,240,230,.08)}
+.chatform{display:flex;gap:8px;margin:0}
+.chatform input{flex:1;min-width:0;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid rgba(244,240,230,.2);background:rgba(244,240,230,.06);font-size:16px}
+.chatform button{min-height:44px;padding:6px 16px;border-radius:10px;border:0;background:var(--brass);color:#1b1407;font-weight:700}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.logbox{border-radius:14px;border:1px solid var(--line);background:var(--panel)}
+.logbox summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;padding:10px 14px;cursor:pointer}
+.logbox summary::-webkit-details-marker{display:none}
+.logbox summary b{display:block;font:700 18px/1.1 'Barlow Condensed',sans-serif}
+.logbox summary span{display:block;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logbox summary svg{flex:none;transition:transform .2s}
+.logbox[open] summary svg{transform:rotate(180deg)}
+.log{max-height:300px;overflow:auto;padding:0 14px 12px;font-size:14px;display:grid;gap:2px;align-content:start}
+.log .l-head{margin-top:8px;font-weight:700}
 .log .l-street{color:var(--muted)}
 .log .l-win{color:var(--brass)}
 .log .l-bust{color:#ff8a7e}
 .log .l-level{color:var(--brass);font-weight:700}
-details summary{cursor:pointer;font:700 18px/1.2 'Barlow Condensed',sans-serif}
-details ul{margin:8px 0 0;padding-left:18px;font-size:14px;display:grid;gap:4px}
-.ov{position:fixed;inset:0;background:rgba(2,14,9,.74);display:grid;place-items:center;padding:16px;z-index:10;overflow:auto}
-.dlg{background:#0b3a28;border:1px solid var(--line);border-radius:18px;padding:22px clamp(16px,3vw,28px);width:min(580px,100%);box-shadow:0 30px 80px rgba(0,0,0,.5)}
-.dlg h2{margin:0 0 6px;font:700 clamp(30px,5vw,40px)/1.05 'Barlow Condensed',sans-serif;text-wrap:balance}
-.dlg h3{margin:16px 0 6px;font:700 18px/1.1 'Barlow Condensed',sans-serif}
-.dlg p{margin:6px 0 14px;color:var(--muted)}
-.fld{display:grid;gap:4px;margin:0 0 12px}
-.fld span{font-weight:600;font-size:14px}
-.fld input,.fld select{min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:rgba(244,240,230,.07);font-size:16px}
+.lobby{flex:1;display:grid;place-items:start center;padding:8px 0}
+.lobby .card{width:min(640px,100%);display:grid;gap:16px;padding:22px clamp(16px,3vw,28px);border-radius:18px;background:#0b3a28;border:1px solid var(--line)}
+.ticket{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 16px;border:1px dashed rgba(227,183,91,.55);border-radius:14px;background:rgba(227,183,91,.07)}
+.ticket small{display:block;color:var(--muted);font-size:13px}
+.ticket .code{font:700 44px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;color:var(--brass)}
+.link{font-size:13px;color:var(--muted);overflow-wrap:anywhere;margin:-8px 0 0}
+.sec{display:grid;gap:6px}
+.sec h3{margin:0;font:700 18px/1.1 'Barlow Condensed',sans-serif;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sec h3 small{font:400 13px 'IBM Plex Sans KR',sans-serif;color:var(--muted)}
+.members{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.members li{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(244,240,230,.06)}
+.members li .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.seg2 button{min-height:52px;padding:6px 12px;border-radius:10px;border:1px solid rgba(244,240,230,.18);background:transparent;text-align:left;display:grid;gap:1px}
+.seg2 button small{font-size:12px;color:var(--muted)}
+.seg2 button[aria-pressed="true"]{border-color:var(--brass);background:rgba(227,183,91,.12)}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 12px}
+.fld{display:grid;gap:4px}
+.fld span{font-size:13px;color:var(--muted)}
+.fld input,.fld select{min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid rgba(244,240,230,.2);background:rgba(244,240,230,.06);font-size:16px}
 .fld select option{background:#0b3a28}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.startbtn{min-height:52px;padding:8px 24px;border-radius:12px;border:0;background:var(--chip);color:#fff;font-weight:700;font-size:17px}
+.startbtn:disabled{opacity:.45;cursor:default}
+.ov{position:fixed;inset:0;background:rgba(2,14,9,.74);display:grid;place-items:center;padding:16px;z-index:40;overflow:auto}
+.dlg{background:#0b3a28;border:1px solid var(--line);border-radius:18px;padding:22px clamp(16px,3vw,28px);width:min(560px,100%);box-shadow:0 30px 80px rgba(0,0,0,.5)}
+.dlg h2{margin:0 0 6px;font:700 clamp(30px,5vw,40px)/1.05 'Barlow Condensed',sans-serif;text-wrap:balance}
+.dlg p{margin:6px 0 14px;color:var(--muted)}
+.dlg ul{margin:6px 0 16px;padding-left:18px;display:grid;gap:6px}
 .joinrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
-.joinrow .fld{margin:0}
 #codeIn{text-transform:uppercase;letter-spacing:.12em;font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700}
 .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:16px 0 10px}
 .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
 .err{color:#ff9d92!important;min-height:22px;margin:8px 0 0!important}
-fieldset{border:0;padding:0;margin:0 0 12px}
-legend{font-weight:600;margin-bottom:6px;font-size:14px}
-.seg{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:6px}
-.seg label{display:grid;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;min-height:44px;background:rgba(244,240,230,.05);align-content:center}
-.seg label small{color:var(--muted);font-size:13px;line-height:1.3}
-.seg input{position:absolute;opacity:0}
-.seg label:has(input:checked){border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass);background:rgba(227,183,91,.12)}
-.seg label:has(input:focus-visible){outline:3px solid var(--brass);outline-offset:2px}
-.seg label:has(input:disabled){cursor:default;opacity:.75}
-.dlg .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-.ticket{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;padding:14px 16px;border:1px dashed rgba(227,183,91,.55);border-radius:14px;background:rgba(227,183,91,.07)}
-.ticket .code{font:700 44px/1 'Barlow Condensed',sans-serif;letter-spacing:.14em;color:var(--brass)}
-.ticket small{display:block;color:var(--muted);font-size:13px}
-.link{font-size:13px;overflow-wrap:anywhere;margin:8px 0 0!important}
-.members{list-style:none;margin:0;padding:0;display:grid;gap:6px}
-.members li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:rgba(244,240,230,.05)}
-.members li .grow{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
-.rules{font-size:13px;color:var(--muted);margin-top:14px;line-height:1.5}
+.note{font-size:13px;color:var(--muted);margin:12px 0 0!important}
 table.st{width:100%;border-collapse:collapse;font-size:15px;margin:6px 0 16px}
 table.st td{padding:7px 4px;border-bottom:1px solid var(--line)}
 table.st td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 table.st tr.me td{color:var(--brass);font-weight:700}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);color:#10251a;padding:10px 16px;border-radius:12px;font-weight:600;z-index:20;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
-@media(min-width:1100px){.app{height:100%}.main{min-height:0;grid-template-rows:minmax(0,1fr)}.play{min-height:0}.side{min-height:0}.log-panel{flex:1;min-height:0;display:flex;flex-direction:column}.log{flex:1;max-height:none}}
-@media(max-width:1099px){.main{grid-template-columns:minmax(0,1fr)}.actionbar{position:sticky;bottom:8px;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.45)}}
-@media(max-width:759px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:none;padding:14px 12px;gap:10px;min-height:0}.table>*{grid-area:auto!important}.table .center,.table .seat.bottom{grid-column:1 / -1}.table::before{border-radius:40px;border-width:10px}.cell{padding:6px 12px}.cell b{font-size:19px}.cell.lv b{font-size:24px}.tools{margin-left:0}}
-@media(max-width:559px){.table{grid-template-columns:minmax(0,1fr)}:root{--ocw:24px;--mcw:38px}.seat:not(.bottom){grid-template-columns:minmax(0,1fr) auto;align-items:center}.seat:not(.bottom) .cards{grid-column:2;grid-row:1 / span 3}.ab-btns{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}.brand{width:100%}.cell:nth-child(2){border-left:0}.ticket .code{font-size:36px}}
-@media(prefers-reduced-motion:reduce){.cd.deal{animation:none}.seat{transition:none}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);color:#10251a;padding:10px 16px;border-radius:12px;font-weight:600;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
+.chatpop{position:fixed;left:12px;bottom:104px;z-index:25;max-width:min(78%,420px);padding:8px 12px;border-radius:4px 14px 14px 14px;background:var(--card);color:#10251a;font-size:14px;box-shadow:0 10px 24px rgba(0,0,0,.4);border:0;text-align:left;overflow-wrap:anywhere}
+.sheetback{position:fixed;inset:0;background:rgba(2,14,9,.6);z-index:34}
+@media(min-width:1100px){.main{flex-wrap:nowrap}.log{max-height:240px}.chatpop{display:none}}
+@media(min-width:1100px) and (min-height:840px){.app{height:100%}.main{min-height:0}.play,.side{min-height:0}.table{min-height:0}}
+@media(max-width:1099px){.play{flex-basis:100%}.side{max-width:none;flex-basis:100%}.actionbar{box-shadow:0 10px 30px rgba(0,0,0,.45)}.playing .chatbtn{display:inline-grid}.playing .chat{position:fixed;left:0;right:0;bottom:0;z-index:35;height:min(640px,82dvh);min-height:0;border-radius:20px 20px 0 0;background:#0b3a28;transform:translateY(105%);visibility:hidden;transition:transform .25s ease-out,visibility 0s .25s;box-shadow:0 -20px 50px rgba(0,0,0,.45)}.playing.chat-open .chat{transform:none;visibility:visible;transition:transform .25s ease-out}.playing .chat-close{display:grid}.chat-close{width:44px;height:44px;border-radius:10px;border:1px solid rgba(244,240,230,.18);background:transparent;place-items:center}.lobby{padding:0}}
+@media(max-width:759px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:none;padding:14px 12px;gap:8px;min-height:0;border-radius:28px;border-width:8px}.table>*{grid-area:auto!important}.table .center,.table .seat.bottom{grid-column:1 / -1}.lvl .lv{font-size:24px}.lvl .lim{font-size:19px}.bar{gap:6px 14px}.handno{display:none}}
+@media(max-width:559px){.table{grid-template-columns:minmax(0,1fr);padding:10px 8px}:root{--ocw:clamp(26px,7.8vw,30px);--mcw:clamp(38px,10.8vw,52px)}.seat.bottom{padding:8px 10px 10px}.seat:not(.bottom){grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:7px 10px}.seat:not(.bottom) .cards{grid-column:2;grid-row:1 / span 3}.seat:not(.bottom) .sn{display:none}.center{grid-template-columns:auto auto auto;align-items:center;gap:4px 12px}.center .potlbl{display:none}.center .status,.center .deadrow{grid-column:1 / -1}.actionbar{padding:10px}.ab-btns{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr))}.ab-btns .btn{padding:6px 8px;font-size:15px}.roomchip{order:-2}.tools{order:-1;margin-left:auto}.ticket .code{font-size:36px}.nextlv span:last-child{display:none}}
+@media(prefers-reduced-motion:reduce){.cd.deal{animation:none}.seat,.playing .chat,.logbox summary svg{transition:none}}
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="clock">
-    <div class="brand"><h1>7 Stud 온라인</h1><span id="brandSub">친구와 함께하는 토너먼트</span></div>
-    <div class="cell lv"><span>레벨</span><b id="cLv">-</b></div>
-    <div class="cell"><span>앤티 / 브링인</span><b id="cAnte">-</b></div>
-    <div class="cell"><span>리밋 (스몰-빅)</span><b id="cLim">-</b></div>
-    <div class="cell"><span id="cNextL">다음 레벨</span><b id="cNext">-</b></div>
-    <div class="cell"><span>남은 인원</span><b id="cLeft">-</b></div>
-    <div class="cell"><span>평균 스택</span><b id="cAvg">-</b></div>
+  <header class="bar">
+    <span class="brand" id="brand">7 Stud 온라인</span>
+    <button class="roomchip" id="roomChip" type="button" title="초대 링크 복사" hidden><i class="dot" id="roomDot"></i><span id="roomCode"></span></button>
+    <div class="lvl" id="lvl" hidden><b class="lv" id="cLv"></b><b class="lim" id="cLim"></b><span id="cAnte"></span></div>
+    <div class="nextlv" id="nextLv" hidden><span class="pips" id="cPips" aria-hidden="true"></span><span id="cNext"></span></div>
+    <div class="handno" id="cHand" hidden></div>
     <div class="tools">
-      <span class="conn"><i class="dot" id="connDot"></i><span id="connLabel">연결 중</span></span>
-      <button class="btn sm" id="codeChip" type="button" hidden>방 코드</button>
-      <button class="btn sm" id="modeBtn" type="button" hidden>연습 모드</button>
-      <button class="btn sm" id="leaveTop" type="button" hidden>나가기</button>
+      <span class="conn" id="conn"><i class="dot" id="connDot"></i><span id="connLabel">연결 중</span></span>
+      <button class="tbtn mode" id="modeBtn" type="button" hidden>연습 모드</button>
+      <button class="tbtn icon" id="menuBtn" type="button" aria-label="메뉴" aria-expanded="false" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+    <div class="menu" id="menu" role="menu" hidden>
+      <button type="button" role="menuitem" data-menu="copy">초대 링크 복사</button>
+      <button type="button" role="menuitem" data-menu="rules">대회 룰 보기</button>
+      <button type="button" role="menuitem" data-menu="leave">방 나가기</button>
     </div>
   </header>
   <div class="main">
-    <section class="play" aria-label="게임 테이블">
+    <section class="play" aria-label="게임">
+      <div class="lobby" id="lobby" hidden></div>
       <div class="table" id="table"></div>
-      <div class="actionbar" aria-live="polite">
+      <div class="actionbar" id="actionbar" aria-live="polite">
+        <div class="hintpop" id="hintPop" hidden></div>
         <div class="ab-info" id="abInfo">방에 들어가면 시작할 수 있어요</div>
         <div class="ab-btns" id="abBtns"></div>
       </div>
     </section>
     <aside class="side">
-      <section class="panel" id="hintPanel">
-        <h2>힌트</h2>
-        <p class="muted">내 차례에 계산하면 팟 오즈, 추정 승률, 남은 카드를 보여줘요.</p>
-        <button class="btn sm" id="hintBtn" type="button">지금 계산 (H)</button>
-        <div class="hint-out" id="hintOut"></div>
+      <section class="chat" id="chat" aria-label="채팅">
+        <div class="chat-head">
+          <h2>채팅</h2>
+          <span class="online"><i class="dot on"></i><span id="onlineTxt">0명 접속</span></span>
+          <button class="chat-close" id="chatClose" type="button" aria-label="채팅 닫기">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+        </div>
+        <div class="chat-list" id="chatList" aria-live="polite"></div>
+        <div class="chat-foot">
+          <div class="chips" id="chips">
+            <button class="chip" type="button">nh</button>
+            <button class="chip" type="button">gg</button>
+            <button class="chip" type="button">ㅋㅋㅋ</button>
+            <button class="chip" type="button">빨리 해</button>
+            <button class="chip" type="button">와…</button>
+          </div>
+          <form class="chatform" id="chatForm" autocomplete="off">
+            <label class="sr" for="chatIn">메시지</label>
+            <input id="chatIn" maxlength="200" placeholder="메시지 입력 (Enter로 전송)" enterkeyhint="send">
+            <button type="submit">전송</button>
+          </form>
+        </div>
       </section>
-      <section class="panel">
-        <h2>죽은 카드</h2>
-        <p class="muted" id="deadNote">이번 핸드에서 폴드한 사람의 오픈 카드</p>
-        <div class="dead" id="dead"></div>
-      </section>
-      <section class="panel log-panel">
-        <h2>핸드 기록</h2>
+      <details class="logbox" id="logBox">
+        <summary><span><b>핸드 기록</b><span id="logSum">아직 없음</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
         <div class="log" id="log"></div>
-      </section>
-      <section class="panel">
-        <details>
-          <summary>대회 룰 요약</summary>
-          <ul>
-            <li>매 핸드 전원 앤티. 3구는 히든 2장 + 오픈 1장.</li>
-            <li>오픈 카드가 가장 낮은 사람이 브링인. 숫자가 같으면 ♣ &lt; ♦ &lt; ♥ &lt; ♠ 중 낮은 무늬.</li>
-            <li>브링인 다음 사람들은 fold / call / complete(스몰 단위까지).</li>
-            <li>3·4구는 스몰, 5~7구는 빅 단위. 4구 오픈 페어 더블벳은 대회 룰대로 없음.</li>
-            <li>레이즈 캡: 베트 1 + 레이즈 3. 4구부터는 보이는 패가 가장 높은 사람이 먼저(같으면 낮은 좌석 번호).</li>
-            <li>7구는 히든. 동점이면 분할하고, 무늬는 승패에 쓰지 않음.</li>
-            <li>단축키: F 폴드, C 체크/콜/브링인, R 컴플리트/베트/레이즈, Enter 다음 핸드, H 힌트.</li>
-          </ul>
-        </details>
-      </section>
+      </details>
     </aside>
   </div>
 </div>
 
+<div class="sheetback" id="sheetBack" hidden></div>
+<button class="chatpop" id="chatPop" type="button" hidden></button>
+
 <div class="ov" id="ovHome">
   <form class="dlg" id="homeForm" autocomplete="off">
     <h2>7스터드 온라인</h2>
-    <p>방을 만들고 링크를 보내면 친구가 바로 들어올 수 있어요. 계정은 필요 없고, 빈자리는 컴퓨터가 채워요. 혼자 컴퓨터랑 해도 돼요.</p>
+    <p>방을 만들고 링크를 보내면 친구가 바로 들어와요. 계정은 필요 없고, 빈자리는 컴퓨터가 채워요. 혼자 컴퓨터랑 해도 돼요.</p>
     <label class="fld"><span>닉네임</span><input id="nameIn" maxlength="12" placeholder="최대 12자" required></label>
-    <div class="row"><button class="btn next" type="button" id="createBtn">새 방 만들기</button></div>
+    <div class="row" style="margin-top:12px"><button class="btn next" type="button" id="createBtn">새 방 만들기</button></div>
     <div class="or">또는 받은 코드로 참가</div>
     <div class="joinrow">
       <label class="fld"><span>방 코드</span><input id="codeIn" maxlength="5" placeholder="K7QM3" autocapitalize="characters" spellcheck="false"></label>
       <button class="btn" type="button" id="joinBtn">참가</button>
     </div>
     <p class="err" id="homeErr"></p>
-    <p class="rules">무료 서버는 한동안 아무도 없으면 잠들어서, 처음 접속할 때 1분 정도 걸릴 수 있어요. 진행 중인 방은 서버가 재시작되면 사라져요.</p>
+    <p class="note">무료 서버는 한동안 아무도 없으면 잠들어서 첫 접속에 1분쯤 걸릴 수 있어요. 진행 중인 방은 서버가 재시작되면 사라져요.</p>
   </form>
-</div>
-
-<div class="ov" id="ovLobby" hidden>
-  <div class="dlg">
-    <div class="ticket">
-      <div><small>방 코드</small><span class="code" id="lbCode">-</span></div>
-      <button class="btn" type="button" id="copyBtn">초대 링크 복사</button>
-    </div>
-    <p class="link muted" id="lbLink"></p>
-    <h3 id="lbTitle">참가자</h3>
-    <ul class="members" id="lbMembers"></ul>
-    <h3>내 모드</h3>
-    <div class="seg" id="modeSeg">
-      <label><input type="radio" name="mymode" value="practice"><span>연습 모드</span><small>죽은 카드·힌트 표시</small></label>
-      <label><input type="radio" name="mymode" value="real"><span>실전 모드</span><small>폴드한 카드는 직접 기억</small></label>
-    </div>
-    <h3>대회 설정 <small class="muted" id="setNote"></small></h3>
-    <div class="setgrid">
-      <label class="fld"><span>컴퓨터 상대</span><select id="setAis"></select></label>
-      <label class="fld"><span>턴 제한 시간</span><select id="setTurn"><option value="20">20초</option><option value="30">30초</option><option value="60">60초</option><option value="0">없음</option></select></label>
-      <label class="fld"><span>레벨업 간격</span><select id="setHpl"><option value="6">6핸드 (표준)</option><option value="4">4핸드 (터보)</option><option value="3">3핸드 (하이퍼)</option></select></label>
-      <label class="fld"><span>컴퓨터 진행 속도</span><select id="setSpeed"><option value="slow">느리게</option><option value="normal">보통</option><option value="fast">빠르게</option></select></label>
-    </div>
-    <div class="row"><button class="btn next" type="button" id="startBtn">대회 시작</button><button class="btn" type="button" id="leaveBtn">나가기</button></div>
-    <p class="muted" id="lbNote"></p>
-  </div>
 </div>
 
 <div class="ov" id="ovEnd" hidden>
   <div class="dlg" id="endDlg"></div>
+</div>
+
+<div class="ov" id="ovRules" hidden>
+  <div class="dlg">
+    <h2>대회 룰</h2>
+    <ul>
+      <li>매 핸드 전원 앤티. 3구는 히든 2장 + 오픈 1장.</li>
+      <li>오픈 카드가 가장 낮은 사람이 브링인. 숫자가 같으면 ♣ &lt; ♦ &lt; ♥ &lt; ♠ 중 낮은 무늬.</li>
+      <li>브링인 다음 사람들은 fold / call / complete(스몰 단위까지).</li>
+      <li>3·4구는 스몰, 5~7구는 빅 단위. 4구 오픈 페어 더블벳은 대회 룰대로 없음.</li>
+      <li>레이즈 캡: 베트 1 + 레이즈 3 (팟 아래 점 4개). 4구부터는 보이는 패가 가장 높은 사람이 먼저, 같으면 낮은 좌석 번호.</li>
+      <li>7구는 히든. 동점이면 분할하고, 무늬는 승패에 쓰지 않음.</li>
+      <li>단축키: F 폴드 · C 체크/콜/브링인 · R 컴플리트/베트/레이즈 · H 힌트 · Enter 다음 핸드 · / 채팅 입력</li>
+    </ul>
+    <div class="row"><button class="btn next" type="button" id="rulesClose">닫기</button></div>
+  </div>
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
@@ -277,9 +328,14 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   const S = Stud;
   const SLOTS = { 0: [], 1: ['tc'], 2: ['lm', 'rm'], 3: ['lm', 'tc', 'rm'], 4: ['lb', 'lt', 'rt', 'rb'], 5: ['lb', 'lt', 'tc', 'rt', 'rb'], 6: ['lb', 'lm', 'lt', 'rt', 'rm', 'rb'] };
   const BUY_IN = 1500;
+  const CHAT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
   const $ = id => document.getElementById(id);
-  const ui = { V: null, offset: 0, seenCards: new Set(), seenHand: -1, hint: null, logStick: true, sentAct: '', toastTimer: null };
-  const net = { ws: null, open: false, code: null, retry: 0, pingTimer: null, queued: null, joining: false };
+  const sheetQuery = window.matchMedia('(max-width: 1099px)');
+  const ui = {
+    V: null, offset: 0, seenCards: new Set(), seenHand: -1, hint: null, hintOpen: false, logStick: true, chatStick: true,
+    sentAct: '', toastTimer: null, popTimer: null, chat: [], unread: 0, chatOpen: false, endClosed: false, lastPhase: null
+  };
+  const net = { ws: null, open: false, code: null, retry: 0, pingTimer: null, queued: null };
 
   /**
    * HTML 특수문자를 이스케이프한다.
@@ -337,13 +393,16 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 연결 상태 표시를 바꾼다.
+   * 연결 상태 표시(방 코드 칩의 점, 방 밖에서는 연결 문구)를 바꾼다.
    * @param {string} state 'open' | 'connecting' | 'closed'
    * @returns {void}
    */
   function setConn(state) {
-    $('connDot').className = 'dot' + (state === 'open' ? ' on' : state === 'connecting' ? ' warn' : '');
+    const cls = 'dot' + (state === 'open' ? ' on' : state === 'connecting' ? ' warn' : '');
+    $('connDot').className = cls;
+    $('roomDot').className = cls;
     $('connLabel').textContent = state === 'open' ? '연결됨' : state === 'connecting' ? '연결 중' : '재연결 중';
+    $('roomChip').title = state === 'open' ? '초대 링크 복사' : '서버 재연결 중';
   }
 
   /**
@@ -401,8 +460,21 @@ table.st tr.me td{color:var(--brass);font-weight:700}
    * @returns {void}
    */
   function setUrl(code) {
-    const url = code ? `${location.pathname}?room=${code}` : location.pathname;
-    history.replaceState(null, '', url);
+    history.replaceState(null, '', code ? `${location.pathname}?room=${code}` : location.pathname);
+  }
+
+  /**
+   * 방을 떠난 상태로 화면 상태를 비운다.
+   * @returns {void}
+   */
+  function resetRoom() {
+    net.code = null;
+    ui.V = null;
+    ui.chat = [];
+    ui.unread = 0;
+    ui.chatOpen = false;
+    ui.hintOpen = false;
+    setUrl(null);
   }
 
   /**
@@ -413,7 +485,6 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   function onMessage(msg) {
     if (msg.t === 'joined') {
       net.code = msg.code;
-      net.joining = false;
       ui.sentAct = '';
       $('abBtns').dataset.html = '';
       setUrl(msg.code);
@@ -421,22 +492,81 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       ui.V = msg;
       ui.offset = msg.serverNow - Date.now();
       render();
+    } else if (msg.t === 'chat') {
+      onChat(msg);
     } else if (msg.t === 'error') {
-      net.joining = false;
       if (msg.code === 'noroom' || msg.code === 'replaced') {
-        net.code = null;
-        ui.V = null;
-        setUrl(null);
+        resetRoom();
         render();
       }
       $('homeErr').textContent = msg.msg;
       if (msg.code !== 'noroom') toast(msg.msg);
     } else if (msg.t === 'left') {
-      net.code = null;
-      ui.V = null;
-      setUrl(null);
+      resetRoom();
       render();
     }
+  }
+
+  /**
+   * 채팅 메시지를 받는다. 시트가 닫힌 작은 화면에서는 안 읽은 개수를 세고 말풍선을 잠깐 띄운다.
+   * @param {{reset?:boolean,items:object[]}} msg chat 메시지
+   * @returns {void}
+   */
+  function onChat(msg) {
+    if (msg.reset) {
+      ui.chat = msg.items.slice();
+    } else {
+      ui.chat = ui.chat.concat(msg.items).slice(-120);
+      const mine = ui.V ? ui.V.you.clientId : null;
+      const incoming = msg.items.filter(c => c.kind === 'user' && c.from !== mine);
+      if (incoming.length && sheetMode() && !ui.chatOpen) {
+        ui.unread += incoming.length;
+        showPop(incoming[incoming.length - 1]);
+        renderActions();
+      }
+    }
+    renderChat();
+  }
+
+  /**
+   * 지금 채팅이 아래 시트로 뜨는 배치인지 (작은 화면 + 게임 중).
+   * @returns {boolean} 여부
+   */
+  function sheetMode() {
+    return sheetQuery.matches && document.body.classList.contains('playing');
+  }
+
+  /**
+   * 새 채팅을 액션 바 위에 잠깐 띄운다.
+   * @param {object} item 채팅 항목
+   * @returns {void}
+   */
+  function showPop(item) {
+    const el = $('chatPop');
+    el.innerHTML = `<b>${esc(item.name)}</b> ${esc(item.text)}`;
+    el.style.bottom = `${$('actionbar').offsetHeight + 20}px`;
+    el.hidden = false;
+    clearTimeout(ui.popTimer);
+    ui.popTimer = setTimeout(() => { el.hidden = true; }, 3500);
+  }
+
+  /**
+   * 채팅 시트를 열거나 닫는다.
+   * @param {boolean} open 열기 여부
+   * @returns {void}
+   */
+  function setChatOpen(open) {
+    ui.chatOpen = open;
+    document.body.classList.toggle('chat-open', open);
+    $('sheetBack').hidden = !(open && sheetMode());
+    if (open) {
+      ui.unread = 0;
+      $('chatPop').hidden = true;
+      ui.chatStick = true;
+      renderChat();
+      setTimeout(() => $('chatIn').focus(), 50);
+    }
+    renderActions();
   }
 
   /**
@@ -453,7 +583,6 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     }
     save('stud7-name', name);
     $('homeErr').textContent = net.open ? '' : '서버에 연결하는 중이에요. 잠시만 기다려 주세요 (무료 서버는 깨어나는 데 1분쯤 걸려요).';
-    net.joining = true;
     if (code) send({ t: 'join', code: code.toUpperCase(), token: getToken(), name });
     else send({ t: 'create', token: getToken(), name });
   }
@@ -495,7 +624,8 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 플레이어 카드를 히든/오픈 묶음으로 그린다.
+   * 플레이어 카드를 히든/오픈 묶음으로 그린다. 히든은 겹쳐 쌓고(뒷면은 많이, 앞면이 보이는 내 카드·쇼다운은 조금),
+   * 실제로 읽어야 하는 오픈 카드는 겹치지 않게 펼친다.
    * @param {object} p 화면 상태의 플레이어
    * @param {boolean} labels 묶음 이름 표시 여부 (내 자리)
    * @returns {string} HTML
@@ -505,13 +635,33 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     const down = [];
     const up = [];
     p.cards.forEach((x, i) => (x.up ? up : down).push(cardHtml(x.c, `${hn}-${p.id}-${i}`)));
-    if (labels) return `<div class="grp down"><small>히든</small><div>${down.join('')}</div></div><div class="grp up"><small>오픈</small><div>${up.join('')}</div></div>`;
-    return `<div class="grp down">${down.join('')}</div><div class="grp up">${up.join('')}</div>`;
+    const open = p.cards.some(x => !x.up && x.c !== null && x.c !== undefined);
+    const fan = `fan${open ? ' open' : ''}`;
+    if (labels) return `<div class="grp down"><small>히든</small><div class="${fan}">${down.join('')}</div></div><div class="grp up"><small>오픈</small><div>${up.join('')}</div></div>`;
+    return `<div class="grp down ${fan}">${down.join('')}</div><div class="grp up">${up.join('')}</div>`;
+  }
+
+  /**
+   * 마지막 액션 배지와 남은 시간 배지.
+   * @param {object} p 화면 상태의 플레이어
+   * @returns {string} HTML
+   */
+  function badgesHtml(p) {
+    const V = ui.V;
+    const out = [];
+    if (p.lastAction) {
+      const kind = /^(Raise|Bet|Complete)/.test(p.lastAction) ? ' agg' : p.lastAction === 'Fold' ? ' fold' : '';
+      out.push(`<span class="badge${kind}">${esc(p.lastAction)}${p.allIn && !p.folded ? ' · 올인' : ''}</span>`);
+    } else if (p.allIn && !p.folded) {
+      out.push('<span class="badge agg">올인</span>');
+    }
+    return out.join('');
   }
 
   /**
    * 좌석 하나를 그린다.
-   * 구성: 이름(사람 표시·접속 점), 좌석 번호·브링인, 스택과 마지막 액션·남은 시간 배지, 카드, 베팅·쇼다운 결과
+   * 구성: 이름(친구 표시·접속 점)과 좌석 번호, 스택과 액션 배지, 카드(히든 | 오픈), 베팅·쇼다운 결과.
+   * 내 자리는 큰 카드와 함께 지금 족보를 오른쪽에 보여준다.
    * @param {object} p 화면 상태의 플레이어
    * @param {string} area 그리드 영역 이름
    * @param {boolean} bottom 아래쪽 큰 자리 여부
@@ -528,58 +678,69 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (h && h.actingSeat === p.seat && !h.done) cls.push('turn');
     if (h && h.done && p.won > 0) cls.push('win');
     if (p.busted && !(h && p.inHand)) cls.push('out');
-    const bi = h && h.street === 3 && h.bringInSeat === p.seat && !h.done ? ' · 브링인' : '';
-    const badges = [];
-    if (p.lastAction) {
-      const kind = /^(Raise|Bet|Complete)/.test(p.lastAction) ? ' agg' : p.lastAction === 'Fold' ? ' fold' : '';
-      badges.push(`<span class="badge${kind}">${esc(p.lastAction)}${p.allIn && !p.folded ? ' · 올인' : ''}</span>`);
-    } else if (p.allIn && !p.folded) {
-      badges.push('<span class="badge agg">올인</span>');
-    }
-    if (V.turn && V.turn.playerId === p.id && V.turn.deadline) badges.push(`<span class="badge time" data-deadline="${V.turn.deadline}"></span>`);
+    else if (p.folded && p.inHand && !mine) cls.push('folded');
+    const timer = V.turn && V.turn.playerId === p.id && V.turn.deadline ? `<span class="badge time" data-deadline="${V.turn.deadline}"></span>` : '';
+    const bi = h && h.street === 3 && h.bringInSeat === p.seat && !h.done ? '브링인 · ' : '';
+    const friend = p.isHuman && !mine ? `<span class="tag">친구</span><i class="dot${p.connected ? ' on' : ''}" title="${p.connected ? '접속 중' : '연결 끊김'}"></i>` : '';
+    const name = mine ? `나 (${esc(p.name)})` : esc(p.name);
     let cards = '';
     if (p.busted && !(h && p.inHand)) {
       cards = `<span class="muted">탈락 · ${p.place}위</span>`;
     } else if (h && p.inHand) {
       if (p.folded && !mine) {
-        cards = practice && p.cards.length ? `<div class="cards dim">${cardsHtml({ ...p, cards: p.cards.filter(x => x.up) }, false)}</div>` : '<div class="cards"><span class="muted">폴드</span></div>';
+        const ups = p.cards.filter(x => x.up);
+        cards = practice && ups.length ? `<div class="cards">${cardsHtml({ ...p, cards: ups }, false)}</div>` : '';
       } else {
-        cards = `<div class="cards${p.folded ? ' dim' : ''}">${cardsHtml(p, mine)}</div>`;
+        cards = `<div class="cards">${cardsHtml(p, mine)}</div>`;
       }
     }
     const foot = [];
     if (p.bet > 0 && h && !h.done) foot.push(`<span class="betpill"><i></i>${S.fmt(p.bet)}</span>`);
     if (p.result) foot.push(`<span class="res">${esc(p.result)}</span>`);
     if (h && h.done && p.won > 0) foot.push(`<span class="won">+${S.fmt(p.won)}</span>`);
-    const human = p.isHuman && !mine ? `<span class="tag">사람</span><i class="dot${p.connected ? ' on' : ''}" title="${p.connected ? '접속 중' : '연결 끊김'}"></i>` : '';
+    if (mine && bottom) {
+      const known = p.cards.map(x => x.c).filter(c => c !== null && c !== undefined);
+      const desc = known.length >= 3 && !p.result ? S.describeScore(S.evaluate(known)) : '';
+      return `<div class="${cls.join(' ')}" style="grid-area:${area}">
+        <div class="top"><span class="nm">${name}</span><span class="sn">${timer}${bi}S${p.seat}</span></div>
+        <div class="mebody">${cards || '<span class="muted">대기 중</span>'}<div class="mestk"><b>${S.fmt(p.stack)}</b><span>${desc ? esc(desc) : ''}</span></div></div>
+        ${foot.length || badgesHtml(p) ? `<div class="line2">${badgesHtml(p)}${foot.join('')}</div>` : ''}
+      </div>`;
+    }
     return `<div class="${cls.join(' ')}" style="grid-area:${area}">
-      <div class="top"><span class="nm">${mine ? '나 (You)' : esc(p.name)}${human}</span><span class="sn">Seat ${p.seat}${bi}</span></div>
-      <div class="line2"><span class="stk">${S.fmt(p.stack)}</span>${badges.join('')}</div>
+      <div class="top"><span class="nm">${name}${friend}</span><span class="sn">${timer}${bi}S${p.seat}</span></div>
+      <div class="line2"><span class="stk">${S.fmt(p.stack)}</span>${badgesHtml(p)}</div>
       ${cards}
       ${foot.length ? `<div class="line2">${foot.join('')}</div>` : ''}
     </div>`;
   }
 
   /**
-   * 테이블 가운데(스트리트, 팟, 진행 상황)를 그린다.
+   * 테이블 가운데: 스트리트와 베팅 단위, 팟, 레이즈 단계 점, 죽은 카드(연습 모드), 진행 상황.
    * @returns {string} HTML
    */
   function centerHtml() {
-    const g = ui.V.game;
+    const V = ui.V;
+    const g = V.game;
     const h = g.hand;
-    if (!h) return '<div class="center"><div class="pot"><small>POT</small><strong>0</strong></div></div>';
+    if (!h) return '<div class="center"><span class="potlbl">POT</span><span class="pot">0</span></div>';
     let status = '';
     if (h.done) status = h.pots.map(pt => `${pt.winners.map(nameOf).map(esc).join(', ')} +${S.fmt(pt.amount)}`).join(' · ');
-    else if (ui.V.yourTurn) status = '당신 차례';
+    else if (V.yourTurn) status = '당신 차례';
     else {
       const acting = g.players.find(p => p.seat === h.actingSeat);
       if (acting) status = `${esc(acting.name)} ${acting.isHuman ? '차례' : '생각 중…'}`;
     }
-    const sub = h.done ? `핸드 #${g.handNo} 종료` : `베트/레이즈 ${h.raises} / ${S.MAX_RAISE_LEVELS}`;
+    const pips = Array.from({ length: S.MAX_RAISE_LEVELS }, (_, i) => `<i class="${i < h.raises ? 'on' : ''}"></i>`).join('');
+    const dead = V.you.mode === 'practice' && h.deadUp.length
+      ? `<div class="deadrow"><small>죽은 카드</small><div>${h.deadUp.slice().sort((a, b) => a - b).map(c => cardHtml(c, null)).join('')}</div></div>`
+      : '';
     return `<div class="center">
-      <div class="street">${S.STREET_NAMES[h.street]} · ${h.street <= 4 ? '스몰' : '빅'} ${S.fmt(h.unit)}</div>
-      <div class="pot"><small>POT</small><strong>${S.fmt(h.pot)}</strong></div>
-      <div class="sub">${sub}</div>
+      <span class="street">${S.STREET_NAMES[h.street]} · ${h.street <= 4 ? '스몰' : '빅'} ${S.fmt(h.unit)}</span>
+      <span class="potlbl">POT</span>
+      <span class="pot">${S.fmt(h.pot)}</span>
+      <span class="raises" title="베트·레이즈 ${h.raises} / ${S.MAX_RAISE_LEVELS}" aria-label="베트·레이즈 ${h.raises} / ${S.MAX_RAISE_LEVELS}">${pips}</span>
+      ${dead}
       <div class="status">${status}</div>
     </div>`;
   }
@@ -592,7 +753,7 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     const V = ui.V;
     const g = V && V.game;
     if (!g) {
-      $('table').innerHTML = '<div class="center"><div class="pot"><small>POT</small><strong>0</strong></div><div class="status muted">대기 중</div></div>';
+      $('table').innerHTML = `<div class="center"><span class="potlbl">POT</span><span class="pot">0</span><div class="status muted">${net.code ? '대기 중' : ''}</div></div>`;
       return;
     }
     if (ui.seenHand !== g.handNo) {
@@ -609,33 +770,35 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 상단 토너먼트 시계를 갱신한다.
+   * 상단 바: 방 밖에서는 제목, 방 안에서는 방 코드 칩과 한 줄짜리 대회 시계(레벨·리밋·다음 레벨·남은 인원).
    * @returns {void}
    */
-  function renderClock() {
+  function renderBar() {
     const V = ui.V;
     const g = V && V.game;
-    $('codeChip').hidden = !net.code;
-    $('codeChip').textContent = net.code ? `방 ${net.code}` : '';
-    $('leaveTop').hidden = !net.code;
-    $('modeBtn').hidden = !V;
+    const inRoom = !!(net.code && V);
+    $('brand').hidden = inRoom && !!g;
+    $('roomChip').hidden = !inRoom;
+    $('roomCode').textContent = net.code || '';
+    $('conn').hidden = inRoom;
+    $('modeBtn').hidden = !inRoom;
+    $('menuBtn').hidden = !inRoom;
     if (V) $('modeBtn').textContent = V.you.mode === 'practice' ? '연습 모드' : '실전 모드';
-    if (!g) {
-      ['cLv', 'cAnte', 'cLim', 'cNext', 'cLeft', 'cAvg'].forEach(id => { $(id).textContent = '-'; });
-      return;
-    }
+    ['lvl', 'nextLv', 'cHand'].forEach(id => { $(id).hidden = !g; });
+    if (!g) return;
     const idx = g.levelIndex;
     const L = S.LEVELS[idx];
     const nxt = S.LEVELS[Math.min(idx + 1, S.LEVELS.length - 1)];
     const n = Math.max(g.handNo, 1);
+    const played = ((n - 1) % g.handsPerLevel) + 1;
+    const left = g.handsPerLevel - played;
     const alive = g.players.filter(p => !p.busted).length;
-    $('cLv').textContent = idx + 1;
-    $('cAnte').textContent = `${S.fmt(L.ante)} / ${S.fmt(L.bringIn)}`;
-    $('cLim').textContent = `${S.fmt(L.small)}-${S.fmt(L.big)}`;
-    $('cNextL').textContent = `다음: ${S.fmt(nxt.small)}-${S.fmt(nxt.big)}`;
-    $('cNext').textContent = `${g.handsPerLevel - ((n - 1) % g.handsPerLevel)}핸드 후`;
-    $('cLeft').textContent = `${alive} / ${g.players.length}`;
-    $('cAvg').textContent = S.fmt((g.players.length * g.startingStack) / Math.max(alive, 1));
+    $('cLv').textContent = `Lv ${idx + 1}`;
+    $('cLim').textContent = `${S.fmt(L.small)} / ${S.fmt(L.big)}`;
+    $('cAnte').textContent = `앤티 ${S.fmt(L.ante)} · 브링인 ${S.fmt(L.bringIn)}`;
+    $('cPips').innerHTML = Array.from({ length: g.handsPerLevel }, (_, i) => `<i class="${i < played ? 'on' : ''}"></i>`).join('');
+    $('cNext').innerHTML = `${left === 0 ? '이번 핸드 후 레벨업' : `레벨업까지 ${left}핸드`}<span> · 다음 ${S.fmt(nxt.small)} / ${S.fmt(nxt.big)}</span>`;
+    $('cHand').innerHTML = `핸드 #${g.handNo} · 남은 인원 <b>${alive} / ${g.players.length}</b>`;
   }
 
   /**
@@ -652,62 +815,61 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 액션 바를 그린다: 내 차례 버튼, 다음 핸드 준비, 탈락·관전 안내.
+   * 액션 바: 내 차례 정보와 버튼(힌트 포함), 다음 핸드 준비, 탈락·관전 안내. 작은 화면에서는 맨 앞에 채팅 버튼.
    * @returns {void}
    */
   function renderActions() {
     const V = ui.V;
-    const info = { set innerHTML(v) { setHtml($('abInfo'), v); }, set textContent(v) { setHtml($('abInfo'), esc(v)); } };
-    const btns = { set innerHTML(v) { setHtml($('abBtns'), v); } };
     const g = V && V.game;
     const p = me();
+    const chatBtn = `<button class="btn chatbtn" type="button" data-chat="1" aria-label="채팅 열기${ui.unread ? `, 안 읽은 메시지 ${ui.unread}개` : ''}">${CHAT_ICON}<small>채팅</small>${ui.unread ? `<span class="unread">${ui.unread > 9 ? '9+' : ui.unread}</span>` : ''}</button>`;
+    let info = '';
+    let btns = '';
     if (!g || !V) {
-      info.textContent = net.code ? '로비에서 대기 중' : '방에 들어가면 시작할 수 있어요';
-      btns.innerHTML = '';
-      return;
-    }
-    if (V.yourTurn) {
+      info = esc(net.code ? '로비에서 대기 중' : '방에 들어가면 시작할 수 있어요');
+    } else if (V.yourTurn) {
       const h = g.hand;
       const toCall = Math.max(0, h.currentBet - p.bet);
-      let txt = `<b>내 차례</b> · 팟 ${S.fmt(h.pot)}`;
-      if (toCall > 0) txt += ` · 콜 ${S.fmt(Math.min(toCall, p.stack))}`;
-      if (toCall > 0 && V.you.mode === 'practice') txt += ` · <em>필요 승률 ${(toCall / (h.pot + toCall) * 100).toFixed(1)}%</em>`;
-      if (V.turn && V.turn.deadline) txt += ` · 남은 시간 <em data-deadline="${V.turn.deadline}"></em>`;
-      info.innerHTML = txt;
+      info = `<b>내 차례</b> · 팟 ${S.fmt(h.pot)}`;
+      if (toCall > 0) info += ` · 콜 ${S.fmt(Math.min(toCall, p.stack))}`;
+      if (toCall > 0 && V.you.mode === 'practice') info += ` · <em>필요 승률 ${(toCall / (h.pot + toCall) * 100).toFixed(1)}%</em>`;
       const label = {
         fold: () => ['Fold', '폴드 · F', ''],
         check: () => ['Check', '체크 · C', 'call'],
-        call: a => [`Call ${S.fmt(a.amount)}`, `콜${a.allIn ? ' (올인)' : ''} · C`, 'call'],
+        call: a => [`Call ${S.fmt(a.amount)}`, `콜${a.allIn ? ' 올인' : ''} · C`, 'call'],
         bringin: a => [`Bring-in ${S.fmt(a.amount)}`, '브링인 · C', 'call'],
-        complete: a => [`Complete ${S.fmt(a.to)}`, `컴플리트${a.allIn ? ' (올인)' : ''} · R`, 'go'],
-        bet: a => [`Bet ${S.fmt(a.to)}`, `베트${a.allIn ? ' (올인)' : ''} · R`, 'go'],
-        raise: a => [`Raise → ${S.fmt(a.to)}`, `레이즈${a.allIn ? ' (올인)' : ''} · R`, 'go']
+        complete: a => [`Complete ${S.fmt(a.to)}`, `컴플리트${a.allIn ? ' 올인' : ''} · R`, 'go'],
+        bet: a => [`Bet ${S.fmt(a.to)}`, `베트${a.allIn ? ' 올인' : ''} · R`, 'go'],
+        raise: a => [`Raise → ${S.fmt(a.to)}`, `레이즈${a.allIn ? ' 올인' : ''} · R`, 'go']
       };
-      btns.innerHTML = V.yourTurn.legal.map((a, i) => {
+      const hintBtn = V.you.mode === 'practice' ? `<button class="btn ghost" type="button" data-hint="1" aria-expanded="${ui.hintOpen}">힌트<small>H</small></button>` : '';
+      btns = hintBtn + V.yourTurn.legal.map((a, i) => {
         const [main, sub, cls] = label[a.type](a);
         return `<button class="btn ${cls}" type="button" data-i="${i}"><span>${main}</span><small>${sub}</small></button>`;
       }).join('');
-      return;
-    }
-    const h = g.hand;
-    if (V.next && p && !p.busted) {
+    } else if (V.next && p && !p.busted) {
+      const h = g.hand;
       const result = p.won > 0 ? `내가 ${S.fmt(p.won)} 획득` : h && h.done ? h.pots.map(pt => `${pt.winners.map(nameOf).map(esc).join(', ')} 승`).join(' · ') : '';
       const need = V.room.members.filter(m => m.connected && m.playerId !== null && !g.players.find(x => x.id === m.playerId).busted).length;
-      info.innerHTML = `핸드 #${g.handNo} 끝 · ${result} · <span class="muted">자동 진행 <span data-deadline="${V.next.deadline}"></span></span>`;
-      btns.innerHTML = V.next.you
+      info = `핸드 #${g.handNo} 끝 · ${result} · <span class="muted">자동 진행 <span data-deadline="${V.next.deadline}"></span></span>`;
+      btns = V.next.you
         ? `<span class="muted">다른 사람 기다리는 중 (${V.next.ready.length}/${need})</span>`
         : '<button class="btn next" type="button" data-next="1"><span>다음 핸드 ▶</span><small>Enter</small></button>';
-      return;
+    } else {
+      const h = g.hand;
+      if (V.room.phase === 'finished') {
+        info = '대회가 끝났어요';
+        btns = '<button class="btn next" type="button" data-result="1"><span>결과 보기</span></button>';
+      } else if (!p) info = '관전 중이에요. 다음 대회부터 참가할 수 있어요.';
+      else if (p.busted) info = g.fast ? `${p.place}위로 탈락 · 남은 대회를 빠르게 진행 중` : `${p.place}위로 탈락 · 관전 중`;
+      else if (h && p.folded && p.inHand) info = '이번 핸드는 폴드했어요 · 다른 사람 진행 중';
+      else {
+        const acting = h && g.players.find(x => x.seat === h.actingSeat);
+        info = acting ? `${esc(acting.name)} 차례` : '진행 중…';
+      }
     }
-    btns.innerHTML = '';
-    if (V.room.phase === 'finished') info.textContent = '대회가 끝났어요';
-    else if (!p) info.textContent = '관전 중이에요. 다음 대회부터 참가할 수 있어요.';
-    else if (p.busted) info.textContent = g.fast ? `${p.place}위로 탈락 · 남은 대회를 빠르게 진행 중` : `${p.place}위로 탈락 · 관전 중`;
-    else if (h && p.folded && p.inHand) info.textContent = '이번 핸드는 폴드했어요 · 다른 사람 진행 중';
-    else {
-      const acting = h && g.players.find(x => x.seat === h.actingSeat);
-      info.textContent = acting ? `${acting.name} 차례` : '진행 중…';
-    }
+    setHtml($('abInfo'), info);
+    setHtml($('abBtns'), (g ? chatBtn : '') + btns);
   }
 
   /**
@@ -731,58 +893,75 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 힌트 패널을 그린다 (연습 모드에서만).
+   * 힌트 팝오버를 그린다 (연습 모드, 내 차례에 힌트를 눌렀을 때만).
    * @returns {void}
    */
   function renderHint() {
     const V = ui.V;
-    const practice = !!V && V.you.mode === 'practice';
-    $('hintPanel').hidden = !practice;
-    if (!practice) return;
-    $('hintBtn').disabled = !V.yourTurn;
+    const show = !!(V && V.yourTurn && V.you.mode === 'practice' && ui.hintOpen);
+    $('hintPop').hidden = !show;
+    if (!show) return;
+    if (!ui.hint) ui.hint = computeHint();
     const a = ui.hint;
-    const out = $('hintOut');
-    if (!a) {
-      out.innerHTML = '';
-      return;
-    }
-    const isBringIn = V.yourTurn && V.yourTurn.legal.some(x => x.type === 'bringin');
+    if (!a) return;
+    const isBringIn = V.yourTurn.legal.some(x => x.type === 'bringin');
     const verdict = isBringIn ? '브링인은 강제 베팅이라 폴드할 수 없어요. 브링인만 낼지 complete할지 고르세요' : a.toCall === 0 ? '체크로 공짜 카드를 볼 수 있어요' : a.eq >= a.need ? '추정 승률이 필요 승률보다 높아요' : '추정 승률이 필요 승률보다 낮아요';
-    const rows = [`<div class="kv"><span>지금 내 패</span><span>${a.current}</span></div>`];
-    rows.push(`<div><div class="kv"><span>추정 승률 (상대 ${a.opponents}명)</span><span class="big">${(a.eq * 100).toFixed(0)}%</span></div>
+    const rows = [`<div class="hd"><h2>힌트</h2><button class="tbtn icon" type="button" data-hintclose="1" aria-label="힌트 닫기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`];
+    rows.push(`<div class="kv"><span>지금 내 패</span><span>${a.current}</span></div>`);
+    rows.push(`<div class="kv"><span>추정 승률 (상대 ${a.opponents}명)</span><span class="big">${(a.eq * 100).toFixed(0)}%</span></div>
       <div class="meter"><i style="width:${Math.min(100, a.eq * 100).toFixed(1)}%"></i>${a.toCall ? `<b style="left:${(a.need * 100).toFixed(1)}%"></b>` : ''}</div>
-      <p class="muted">${a.toCall ? `빨간 선 = 필요 승률 ${(a.need * 100).toFixed(1)}% (콜 ${S.fmt(a.toCall)} ÷ 콜 후 팟 ${S.fmt(a.pot + a.toCall)}) · ` : ''}${verdict}. 상대 히든을 무작위로 가정한 값이라 실제보다 낙관적일 수 있어요.</p></div>`);
+      <p>${a.toCall ? `빨간 선 = 필요 승률 ${(a.need * 100).toFixed(1)}% (콜 ${S.fmt(a.toCall)} ÷ 콜 후 팟 ${S.fmt(a.pot + a.toCall)}). ` : ''}${verdict}. 상대 히든을 무작위로 가정한 값이라 실제보다 낙관적일 수 있어요.</p>`);
     if (a.nextStreet) rows.push(`<div class="kv"><span>${a.nextStreet}에 족보가 오르는 카드</span><span>${a.improving}장 / ${a.unseen}장 (${(a.improving / a.unseen * 100).toFixed(0)}%)</span></div>`);
     a.ranks.forEach(r => rows.push(`<div class="kv"><span>${r.label}: 내가 ${r.mine}장, 남의 오픈에 ${r.seen}장</span><span>${r.left}장 남음</span></div>`));
     a.suits.forEach(s => rows.push(`<div class="kv"><span>${s.symbol}: 내가 ${s.mine}장, 남의 오픈에 ${s.seen}장</span><span>${s.left}장 남음</span></div>`));
-    out.innerHTML = rows.join('');
+    $('hintPop').innerHTML = rows.join('');
   }
 
   /**
-   * 죽은 카드 패널을 그린다.
+   * 채팅 목록을 그린다. 같은 사람이 이어서 보낸 말은 이름을 한 번만 보여준다.
    * @returns {void}
    */
-  function renderDead() {
+  function renderChat() {
     const V = ui.V;
-    const practice = !V || V.you.mode === 'practice';
-    $('deadNote').textContent = practice ? '이번 핸드에서 폴드한 사람의 오픈 카드' : '실전 모드: 폴드한 카드는 직접 기억하세요';
-    const cards = practice && V && V.game && V.game.hand ? V.game.hand.deadUp.slice().sort((a, b) => a - b) : [];
-    $('dead').innerHTML = cards.length ? cards.map(c => cardHtml(c, null)).join('') : practice ? '<span class="muted">아직 없음</span>' : '';
+    const mine = V ? V.you.clientId : null;
+    const list = $('chatList');
+    const online = V ? V.room.members.filter(m => m.connected).length : 0;
+    $('onlineTxt').textContent = `${online}명 접속`;
+    if (!ui.chat.length) {
+      list.innerHTML = '<p class="empty">아직 대화가 없어요.<br>nh, gg 버튼으로 가볍게 시작해 보세요.</p>';
+      return;
+    }
+    let prev = null;
+    list.innerHTML = ui.chat.map(c => {
+      let html;
+      if (c.kind === 'system') html = `<div class="cm sys">${esc(c.text)}</div>`;
+      else if (c.from === mine) html = `<div class="cm mine"><span class="bub">${esc(c.text)}</span></div>`;
+      else {
+        const showName = !prev || prev.kind !== 'user' || prev.from !== c.from || c.ts - prev.ts > 120000;
+        html = `<div class="cm">${showName ? `<span class="who">${esc(c.name)}</span>` : ''}<span class="bub">${esc(c.text)}</span></div>`;
+      }
+      prev = c;
+      return html;
+    }).join('');
+    if (ui.chatStick) list.scrollTop = list.scrollHeight;
   }
 
   /**
-   * 핸드 기록을 그린다. 사용자가 위로 스크롤했으면 위치를 유지한다.
+   * 핸드 기록(접힌 아코디언)과 그 요약 한 줄을 그린다.
    * @returns {void}
    */
   function renderLog() {
-    const el = $('log');
     const log = ui.V && ui.V.game ? ui.V.game.log : [];
+    const last = log.slice(-2).map(l => l.text).join(' · ');
+    $('logSum').textContent = last || '아직 없음';
+    if (!$('logBox').open) return;
+    const el = $('log');
     el.innerHTML = log.map(l => `<div class="${l.kind ? 'l-' + l.kind : ''}">${esc(l.text)}</div>`).join('');
     if (ui.logStick) el.scrollTop = el.scrollHeight;
   }
 
   /**
-   * 로비 화면을 그린다: 방 코드·초대 링크, 참가자, 내 모드, 대회 설정(방장만 수정), 시작 버튼.
+   * 로비(테이블 자리에 표시): 방 코드·초대 링크, 참가자, 내 모드, 대회 설정(방장만 수정), 시작 버튼.
    * @returns {void}
    */
   function renderLobby() {
@@ -790,28 +969,31 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     const room = V.room;
     const isHost = V.you.host;
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
-    $('lbCode').textContent = room.code;
-    $('lbLink').textContent = link;
     const players = room.members.filter(m => !m.spectator);
-    $('lbTitle').textContent = `참가자 ${players.length}명`;
-    $('lbMembers').innerHTML = room.members.map(m => `<li><i class="dot${m.connected ? ' on' : ''}"></i><span class="grow">${esc(m.name)}${m.clientId === V.you.clientId ? ' (나)' : ''}</span>${m.clientId === room.hostId ? '<span class="tag">방장</span>' : ''}${m.spectator ? '<span class="tag">관전</span>' : ''}<span class="muted">${m.mode === 'real' ? '실전' : '연습'}</span></li>`).join('');
-    document.querySelectorAll('#modeSeg input').forEach(el => { el.checked = el.value === V.you.mode; });
     const s = room.settings;
-    const maxAi = Math.max(0, 7 - players.length);
-    $('setAis').innerHTML = Array.from({ length: maxAi + 1 }, (_, i) => `<option value="${i}">${i}명${i === 0 ? ' (사람끼리)' : ''}</option>`).join('');
-    $('setAis').value = String(s.ais);
-    $('setTurn').value = String(s.turnSecs);
-    $('setHpl').value = String(s.hpl);
-    $('setSpeed').value = s.speed;
-    ['setAis', 'setTurn', 'setHpl', 'setSpeed'].forEach(id => { $(id).disabled = !isHost; });
-    $('setNote').textContent = isHost ? '' : '· 방장만 바꿀 수 있어요';
     const total = players.length + s.ais;
-    $('startBtn').hidden = !isHost;
-    $('startBtn').disabled = total < 2;
-    $('startBtn').textContent = `대회 시작 (${total}명)`;
-    $('lbNote').textContent = isHost
-      ? (total < 2 ? '혼자라면 컴퓨터 상대를 1명 이상 넣어 주세요.' : '친구에게 초대 링크를 보내고, 다 모이면 시작하세요.')
-      : '방장이 대회를 시작하기를 기다리는 중이에요.';
+    const maxAi = Math.max(0, 7 - players.length);
+    const opt = (list, cur) => list.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('');
+    const dis = isHost ? '' : ' disabled';
+    const html = `<div class="card">
+      <div class="ticket"><div><small>방 코드</small><span class="code">${esc(room.code)}</span></div><button class="btn next" type="button" data-copy="1">초대 링크 복사</button></div>
+      <p class="link">${esc(link)}</p>
+      <div class="sec"><h3>참가자 ${players.length}명 <small>+ 컴퓨터 ${s.ais}명 = ${total}명 테이블</small></h3>
+        <ul class="members">${room.members.map(m => `<li><i class="dot${m.connected ? ' on' : ''}"></i><span class="grow">${esc(m.name)}${m.clientId === V.you.clientId ? ' (나)' : ''}</span>${m.clientId === room.hostId ? '<span class="tag">방장</span>' : ''}${m.spectator ? '<span class="tag">관전</span>' : ''}<span class="muted">${m.mode === 'real' ? '실전' : '연습'}</span></li>`).join('')}</ul></div>
+      <div class="sec"><h3>내 모드</h3><div class="seg2">
+        <button type="button" data-mode="practice" aria-pressed="${V.you.mode === 'practice'}"><span>연습 모드</span><small>죽은 카드·힌트 표시</small></button>
+        <button type="button" data-mode="real" aria-pressed="${V.you.mode === 'real'}"><span>실전 모드</span><small>폴드한 카드는 직접 기억</small></button>
+      </div></div>
+      <div class="sec"><h3>대회 설정 <small>${isHost ? '' : '방장만 바꿀 수 있어요'}</small></h3><div class="setgrid">
+        <label class="fld"><span>컴퓨터 상대</span><select data-set="ais"${dis}>${opt(Array.from({ length: maxAi + 1 }, (_, i) => [i, i === 0 ? '0명 (사람끼리)' : `${i}명`]), s.ais)}</select></label>
+        <label class="fld"><span>턴 제한 시간</span><select data-set="turnSecs"${dis}>${opt([[20, '20초'], [30, '30초'], [60, '60초'], [0, '없음']], s.turnSecs)}</select></label>
+        <label class="fld"><span>레벨업 간격</span><select data-set="hpl"${dis}>${opt([[6, '6핸드 (표준)'], [4, '4핸드 (터보)'], [3, '3핸드 (하이퍼)']], s.hpl)}</select></label>
+        <label class="fld"><span>컴퓨터 진행 속도</span><select data-set="speed"${dis}>${opt([['slow', '느리게'], ['normal', '보통'], ['fast', '빠르게']], s.speed)}</select></label>
+      </div></div>
+      <div class="row">${isHost ? `<button class="startbtn" type="button" data-start="1"${total < 2 ? ' disabled' : ''}>대회 시작 (${total}명)</button>` : '<span class="muted">방장이 대회를 시작하기를 기다리는 중이에요.</span>'}</div>
+      ${isHost && total < 2 ? '<p class="muted" style="margin:0">혼자라면 컴퓨터 상대를 1명 이상 넣어 주세요.</p>' : ''}
+    </div>`;
+    setHtml($('lobby'), html);
   }
 
   /**
@@ -829,28 +1011,41 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     $('endDlg').innerHTML = `<h2>${title}</h2>
       <p>${g.handNo}핸드 만에 끝났어요. 가상 바이인 $${S.fmt(BUY_IN)} × ${g.players.length}명, 상금 풀 $${S.fmt(pool)}.</p>
       <table class="st"><tbody>${rows}</tbody></table>
-      <div class="row">${V.you.host ? '<button class="btn next" type="button" id="rematchBtn">같은 방에서 한 판 더</button>' : '<span class="muted">방장이 한 판 더를 누르면 로비로 돌아가요.</span>'}<button class="btn" type="button" id="endLeave">나가기</button></div>`;
+      <div class="row">${V.you.host ? '<button class="btn next" type="button" id="rematchBtn">같은 방에서 한 판 더</button>' : '<span class="muted">방장이 한 판 더를 누르면 로비로 돌아가요.</span>'}<button class="btn" type="button" id="endClose">닫고 채팅하기</button></div>`;
   }
 
   /**
-   * 화면 전체를 다시 그리고, 상황에 맞는 창(홈/로비/결과)을 띄운다.
+   * 화면 전체를 다시 그리고, 상황에 맞는 창(홈/결과)과 로비·테이블 전환을 맞춘다.
    * @returns {void}
    */
   function render() {
     const V = ui.V;
     const inRoom = !!(net.code && V);
+    const phase = inRoom ? V.room.phase : null;
+    if (phase !== ui.lastPhase) {
+      ui.lastPhase = phase;
+      ui.endClosed = false;
+      if (phase !== 'playing' && phase !== 'finished' && ui.chatOpen) setChatOpen(false);
+    }
+    document.body.classList.toggle('playing', phase === 'playing' || phase === 'finished');
     $('ovHome').hidden = inRoom;
-    $('ovLobby').hidden = !(inRoom && V.room.phase === 'lobby');
-    const endShown = inRoom && V.room.phase === 'finished' && V.game;
+    $('lobby').hidden = phase !== 'lobby';
+    $('table').hidden = phase === 'lobby';
+    $('actionbar').hidden = phase === 'lobby';
+    const endShown = phase === 'finished' && !!V.game && !ui.endClosed;
     if (endShown && $('ovEnd').hidden) renderEnd();
     $('ovEnd').hidden = !endShown;
-    if (inRoom && V.room.phase === 'lobby') renderLobby();
-    if (!V || !V.yourTurn) ui.hint = null;
-    renderClock();
+    if (phase === 'lobby') renderLobby();
+    if (!V || !V.yourTurn) {
+      ui.hint = null;
+      ui.hintOpen = false;
+    }
+    $('sheetBack').hidden = !(ui.chatOpen && sheetMode());
+    renderBar();
     renderTable();
     renderActions();
     renderHint();
-    renderDead();
+    renderChat();
     renderLog();
     tick();
   }
@@ -880,8 +1075,10 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     const key = `${V.yourTurn.handNo}-${V.game.hand.street}-${V.game.hand.raises}-${V.game.hand.currentBet}-${a.type}`;
     if (key === ui.sentAct) return;
     ui.sentAct = key;
+    ui.hintOpen = false;
     send({ t: 'act', handNo: V.yourTurn.handNo, i, type: a.type });
-    $('abBtns').querySelectorAll('button').forEach(b => { b.disabled = true; });
+    $('abBtns').querySelectorAll('button[data-i]').forEach(b => { b.disabled = true; });
+    renderHint();
   }
 
   /**
@@ -893,24 +1090,38 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
-   * 초대 링크를 복사한다 (실패하면 링크를 선택해 둔다).
+   * 힌트 팝오버를 열고 닫는다.
+   * @returns {void}
+   */
+  function toggleHint() {
+    if (!ui.V || !ui.V.yourTurn || ui.V.you.mode !== 'practice') return;
+    ui.hintOpen = !ui.hintOpen;
+    renderHint();
+    renderActions();
+  }
+
+  /**
+   * 채팅을 보낸다.
+   * @param {string} text 내용
+   * @returns {void}
+   */
+  function sendChat(text) {
+    const t = String(text || '').trim();
+    if (!t || !net.code) return;
+    send({ t: 'chat', text: t.slice(0, 200) });
+    ui.chatStick = true;
+  }
+
+  /**
+   * 초대 링크를 복사한다 (실패하면 링크를 알림으로 보여준다).
    * @returns {void}
    */
   function copyLink() {
+    if (!net.code) return;
     const link = `${location.origin}${location.pathname}?room=${net.code}`;
-    const fallback = () => {
-      const r = document.createRange();
-      r.selectNodeContents($('lbLink'));
-      const sel = getSelection();
-      sel.removeAllRanges();
-      sel.addRange(r);
-      toast('링크를 선택해 뒀어요. 복사해서 보내 주세요.');
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(link).then(() => toast('초대 링크를 복사했어요'), fallback);
-    } else {
-      fallback();
-    }
+    const fallback = () => toast(link);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(() => toast('초대 링크를 복사했어요'), fallback);
+    else fallback();
   }
 
   /**
@@ -919,10 +1130,18 @@ table.st tr.me td{color:var(--brass);font-weight:700}
    */
   function leave() {
     send({ t: 'leave' });
-    net.code = null;
-    ui.V = null;
-    setUrl(null);
+    resetRoom();
     render();
+  }
+
+  /**
+   * 메뉴를 열고 닫는다.
+   * @param {boolean} open 열기 여부
+   * @returns {void}
+   */
+  function setMenu(open) {
+    $('menu').hidden = !open;
+    $('menuBtn').setAttribute('aria-expanded', String(open));
   }
 
   /**
@@ -941,56 +1160,117 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     });
     $('homeForm').addEventListener('submit', e => {
       e.preventDefault();
-      if ($('codeIn').value.trim().length === 5) enter($('codeIn').value.trim());
-      else enter(null);
+      const code = $('codeIn').value.trim();
+      enter(code.length === 5 ? code : null);
     });
-    $('copyBtn').addEventListener('click', copyLink);
-    $('codeChip').addEventListener('click', copyLink);
-    $('leaveBtn').addEventListener('click', leave);
-    $('leaveTop').addEventListener('click', leave);
-    $('modeSeg').addEventListener('change', e => send({ t: 'mode', mode: e.target.value }));
+    $('roomChip').addEventListener('click', copyLink);
     $('modeBtn').addEventListener('click', () => {
       if (ui.V) send({ t: 'mode', mode: ui.V.you.mode === 'practice' ? 'real' : 'practice' });
     });
-    const setting = (id, key, num) => $(id).addEventListener('change', e => send({ t: 'settings', patch: { [key]: num ? Number(e.target.value) : e.target.value } }));
-    setting('setAis', 'ais', true);
-    setting('setTurn', 'turnSecs', true);
-    setting('setHpl', 'hpl', true);
-    setting('setSpeed', 'speed', false);
-    $('startBtn').addEventListener('click', () => send({ t: 'start' }));
+    $('menuBtn').addEventListener('click', e => {
+      e.stopPropagation();
+      setMenu($('menu').hidden);
+    });
+    $('menu').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      setMenu(false);
+      if (b.dataset.menu === 'copy') copyLink();
+      if (b.dataset.menu === 'rules') $('ovRules').hidden = false;
+      if (b.dataset.menu === 'leave') leave();
+    });
+    document.addEventListener('click', e => {
+      if (!$('menu').hidden && !e.target.closest('#menu')) setMenu(false);
+    });
+    $('rulesClose').addEventListener('click', () => { $('ovRules').hidden = true; });
+    $('lobby').addEventListener('click', e => {
+      const b = e.target.closest('button');
+      if (!b) return;
+      if (b.dataset.copy) copyLink();
+      if (b.dataset.mode) send({ t: 'mode', mode: b.dataset.mode });
+      if (b.dataset.start) send({ t: 'start' });
+    });
+    $('lobby').addEventListener('change', e => {
+      const sel = e.target.closest('select[data-set]');
+      if (!sel) return;
+      const key = sel.dataset.set;
+      send({ t: 'settings', patch: { [key]: key === 'speed' ? sel.value : Number(sel.value) } });
+    });
     $('endDlg').addEventListener('click', e => {
       if (e.target.closest('#rematchBtn')) send({ t: 'rematch' });
-      if (e.target.closest('#endLeave')) leave();
+      if (e.target.closest('#endClose')) {
+        ui.endClosed = true;
+        render();
+      }
     });
     $('abBtns').addEventListener('click', e => {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.next) ready();
-      else act(Number(b.dataset.i));
+      else if (b.dataset.chat) setChatOpen(true);
+      else if (b.dataset.hint) toggleHint();
+      else if (b.dataset.result) {
+        ui.endClosed = false;
+        render();
+      } else if (b.dataset.i !== undefined) act(Number(b.dataset.i));
     });
-    $('hintBtn').addEventListener('click', () => {
-      if (!ui.V || !ui.V.yourTurn) return;
-      ui.hint = computeHint();
-      renderHint();
+    $('hintPop').addEventListener('click', e => {
+      if (e.target.closest('[data-hintclose]')) toggleHint();
+    });
+    $('chatForm').addEventListener('submit', e => {
+      e.preventDefault();
+      sendChat($('chatIn').value);
+      $('chatIn').value = '';
+    });
+    $('chips').addEventListener('click', e => {
+      const b = e.target.closest('.chip');
+      if (b) sendChat(b.textContent);
+    });
+    $('chatClose').addEventListener('click', () => setChatOpen(false));
+    $('sheetBack').addEventListener('click', () => setChatOpen(false));
+    $('chatPop').addEventListener('click', () => setChatOpen(true));
+    $('chatList').addEventListener('scroll', () => {
+      const el = $('chatList');
+      ui.chatStick = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
+    });
+    $('logBox').addEventListener('toggle', () => {
+      ui.logStick = true;
       renderLog();
     });
     $('log').addEventListener('scroll', () => {
       const el = $('log');
       ui.logStick = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
     });
+    sheetQuery.addEventListener('change', () => {
+      if (!sheetMode()) setChatOpen(false);
+      render();
+    });
     document.addEventListener('keydown', e => {
-      if (!$('ovHome').hidden || !$('ovLobby').hidden || !$('ovEnd').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        if (ui.chatOpen && sheetMode()) setChatOpen(false);
+        if (!$('ovRules').hidden) $('ovRules').hidden = true;
+        setMenu(false);
+        if (ui.hintOpen) toggleHint();
+        return;
+      }
+      if (!$('ovHome').hidden || !$('ovEnd').hidden || !$('ovRules').hidden || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target.closest && e.target.closest('input,select,textarea')) return;
       const V = ui.V;
       if (!V) return;
       const key = e.key.toLowerCase();
+      if (key === '/') {
+        e.preventDefault();
+        if (sheetMode()) setChatOpen(true);
+        else $('chatIn').focus();
+        return;
+      }
       if ((key === 'enter' || key === ' ') && V.next) {
         e.preventDefault();
         ready();
         return;
       }
-      if (key === 'h' && V.yourTurn && V.you.mode === 'practice') {
-        $('hintBtn').click();
+      if (key === 'h') {
+        toggleHint();
         return;
       }
       if (!V.yourTurn) return;
@@ -1018,10 +1298,7 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       $('joinBtn').classList.add('next');
       $('createBtn').classList.remove('next');
       $('joinBtn').textContent = `${code} 방 참가`;
-      if ($('nameIn').value.trim()) {
-        net.code = code;
-        net.joining = true;
-      }
+      if ($('nameIn').value.trim()) net.code = code;
     }
     render();
     connect();

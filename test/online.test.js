@@ -7,6 +7,7 @@
  *  2) 모든 화면 상태에서 남의 히든 카드가 새지 않음 (쇼다운 공개분 제외), 실전 모드는 폴드 카드·죽은 카드 미전송
  *  3) 대회 중 들어온 사람은 관전자
  *  4) 리매치 후 사람 2명 헤즈업(컴퓨터 0명) 완주
+ *  5) 채팅: 전달, 연속 전송 제한, 길이 제한, 시스템 안내, 재접속 시 기록 복원, 관전자 채팅, 컴퓨터 한마디 개수 출력
  */
 process.env.STUD_TIME_SCALE = '0.004';
 const crypto = require('crypto');
@@ -55,6 +56,7 @@ class Bot {
     this.sentKey = '';
     this.auto = true;
     this.errors = [];
+    this.chat = [];
   }
 
   /**
@@ -90,6 +92,7 @@ class Bot {
       this.send({ t: 'mode', mode: this.mode });
     }
     if (msg.t === 'error') this.errors.push(msg.code);
+    if (msg.t === 'chat') this.chat = msg.reset ? msg.items.slice() : this.chat.concat(msg.items);
     if (msg.t !== 'state') return;
     this.state = msg;
     this.states++;
@@ -158,6 +161,18 @@ class Bot {
   B.send({ t: 'join', code: A.code.toLowerCase(), token: B.token, name: B.name });
   await B.until(() => B.state && B.state.room.members.length === 2, 2000, 'B joined');
   assert(A.state.you.host && !B.state.you.host, 'host flag');
+  A.send({ t: 'chat', text: '  안녕\n하세요  ' });
+  A.send({ t: 'chat', text: '바로 또 보냄' });
+  await B.until(() => B.chat.some(c => c.kind === 'user'), 2000, 'chat delivered');
+  await sleep(700);
+  A.send({ t: 'chat', text: 'x'.repeat(300) });
+  await B.until(() => B.chat.filter(c => c.kind === 'user').length === 2, 2000, 'second chat');
+  const users = B.chat.filter(c => c.kind === 'user');
+  assert(users[0].text === '안녕 하세요' && users[0].name === '호스트', 'chat cleaned: ' + users[0].text);
+  assert(users[1].text.length === 200, 'chat length capped');
+  assert(B.chat.some(c => c.kind === 'system' && c.text.includes('방을 만들었어요')), 'create notice in history');
+  assert(A.chat.some(c => c.kind === 'system' && c.text.includes('친구 님이 들어왔어요')), 'join notice');
+  console.log('chat basics ok');
   B.send({ t: 'settings', patch: { ais: 0 } });
   await sleep(50);
   assert(A.state.room.settings.ais === 5, 'non-host cannot change settings');
@@ -187,6 +202,10 @@ class Bot {
   await reB.until(() => reB.state && reB.state.game, 3000, 'B reconnected');
   assert(reB.state.you.playerId === myIdB, 'B got same seat back');
   assert(reB.state.room.members.length === 3, 'no duplicate member on reconnect');
+  assert(reB.chat.some(c => c.kind === 'user' && c.text === '안녕 하세요'), 'chat history restored on reconnect');
+  assert(reB.chat.some(c => c.text.startsWith('대회 시작')), 'start notice');
+  C.send({ t: 'chat', text: '관전 중' });
+  await A.until(() => A.chat.some(c => c.text === '관전 중' && c.name === '관전자'), 2000, 'spectator chat');
   console.log(`reconnect ok (B stack was ${stackBefore.stack}, hand ${reB.state.game.handNo})`);
 
   await A.until(() => A.state.room.phase === 'finished', 240000, 'tournament 1 finished');
@@ -194,6 +213,9 @@ class Bot {
   const places = g.players.map(p => p.place).sort((a, b) => a - b).join(',');
   assert(places === '1,2,3,4,5,6,7', 'places ' + places);
   assert(g.players.reduce((s, p) => s + p.stack, 0) === 70000, 'chips conserved');
+  await A.until(() => A.chat.some(c => c.text.startsWith('대회 종료')), 2000, 'end notice');
+  console.log(`computer chat lines in history: ${A.chat.filter(c => String(c.from).startsWith('ai-')).length}`);
+  assert(A.chat.length <= 80, 'chat history capped');
   console.log(`tournament 1: ${g.handNo} hands, winner ${g.players.find(p => p.place === 1).name}, A acts ${A.acts}, B acts ${reB.acts}, states A ${A.states}`);
 
   reB.send({ t: 'rematch' });

@@ -4,7 +4,7 @@
  * 7스터드 온라인 서버
  * 구성 요소
  *  - HTTP: public/ 정적 파일과 /healthz (Render 헬스 체크)
- *  - WebSocket(/ws): 방 만들기·참가·재접속, 설정, 시작, 액션, 다음 핸드 준비, 리매치
+ *  - WebSocket(/ws): 방 만들기·참가·재접속, 설정, 시작, 액션, 다음 핸드 준비, 리매치, 채팅
  *  - Room: 방 하나의 멤버·설정·대회(Tournament)를 관리하고, 서버가 딜러로서 엔진을 돌린다
  *  - 화면 상태(view): 접속자마다 따로 만들며, 히든 카드는 본인 것과 쇼다운 공개분만 담는다
  * 상태는 모두 메모리에만 있어서 서버가 재시작되면 진행 중인 방은 사라진다.
@@ -30,6 +30,9 @@ const LOG_LIMIT = 150;
 const RATE_WINDOW_MS = 1000;
 const RATE_MAX = 30;
 const TIME_SCALE = Number(process.env.STUD_TIME_SCALE) || 1;
+const CHAT_KEEP = 80;
+const CHAT_MAX_LEN = 200;
+const CHAT_MIN_INTERVAL_MS = 600;
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -82,6 +85,15 @@ function cleanName(s) {
 }
 
 /**
+ * 채팅 문장을 정리한다: 제어문자 제거(줄바꿈은 공백), 앞뒤 공백 제거, 최대 200자.
+ * @param {*} s 입력값
+ * @returns {string} 정리된 문장 (비었으면 빈 문자열)
+ */
+function cleanChat(s) {
+  return String(s || '').replace(/[\r\n\t]+/g, ' ').replace(/[\u0000-\u001f\u007f]/g, '').trim().slice(0, CHAT_MAX_LEN);
+}
+
+/**
  * 재접속 토큰 형식을 검사한다.
  * @param {*} token 입력값
  * @returns {boolean} 유효 여부
@@ -118,6 +130,7 @@ function send(ws, msg) {
  *  - settings: ais(컴퓨터 수), hpl(레벨업 간격), speed(진행 속도), turnSecs(턴 제한, 0이면 없음)
  *  - t: 진행 중인 Tournament, runId: 리매치 시 이전 대회를 멈추기 위한 실행 번호
  *  - pending: 사람 차례 대기 정보, next: 다음 핸드 준비 대기 정보
+ *  - chat: 최근 채팅·시스템 메시지 (방이 살아 있는 동안 리매치를 넘어 유지)
  */
 class Room {
   /**
@@ -140,6 +153,45 @@ class Room {
     this.lastFlush = 0;
     this.lastActive = Date.now();
     this.gateWaiters = [];
+    this.chat = [];
+    this.chatSeq = 0;
+    this.lastLevel = 0;
+    this.reportedBusts = new Set();
+  }
+
+  /**
+   * 채팅 기록에 한 줄을 추가하고 접속자 모두에게 보낸다.
+   * @param {{kind:string,from:string|null,name:string,text:string}} item 메시지
+   * @returns {void}
+   */
+  pushChat(item) {
+    const msg = Object.assign({ id: ++this.chatSeq, ts: Date.now() }, item);
+    this.chat.push(msg);
+    if (this.chat.length > CHAT_KEEP) this.chat.splice(0, this.chat.length - CHAT_KEEP);
+    this.members.forEach(m => { if (m.connected) send(m.ws, { t: 'chat', items: [msg] }); });
+  }
+
+  /**
+   * 시스템 안내를 채팅에 남긴다 (입장, 대회 시작, 레벨업, 사람의 팟 획득·탈락, 우승).
+   * @param {string} text 안내 문장
+   * @returns {void}
+   */
+  system(text) {
+    this.pushChat({ kind: 'system', from: null, name: '', text });
+  }
+
+  /**
+   * 멤버의 채팅을 받는다. 0.6초 안에 연달아 보내면 버린다.
+   * @param {object} m 멤버
+   * @param {*} raw 보낸 문장
+   * @returns {void}
+   */
+  say(m, raw) {
+    const text = cleanChat(raw);
+    const now = Date.now();
+    if (!text || now - (m.lastChat || 0) < CHAT_MIN_INTERVAL_MS) return;
+    m.lastChat = now;
+    this.pushChat({ kind: 'user', from: m.clientId, name: m.name, text });
   }
 
   /**
@@ -195,9 +247,10 @@ class Room {
       if (this.phase === 'lobby') m.name = name;
     } else {
       const spectator = this.phase !== 'lobby' || this.seated().length >= MAX_PLAYERS;
-      m = { clientId: newId(), token, name, mode: 'practice', ws, connected: true, playerId: null, spectator };
+      m = { clientId: newId(), token, name, mode: 'practice', ws, connected: true, playerId: null, spectator, lastChat: 0 };
       this.members.push(m);
       this.clampAis();
+      this.system(this.members.length === 1 ? `${name} 님이 방을 만들었어요` : `${name} 님이 들어왔어요${spectator ? ' (관전)' : ''}`);
     }
     if (!this.hostId || !this.members.some(x => x.clientId === this.hostId && x.connected)) this.hostId = m.clientId;
     this.touch();
@@ -229,6 +282,7 @@ class Room {
    * @returns {void}
    */
   leave(m) {
+    this.system(`${m.name} 님이 나갔어요`);
     if (this.phase === 'lobby' || m.playerId === null) {
       this.members = this.members.filter(x => x !== m);
       if (this.hostId === m.clientId) this.hostId = (this.members.find(x => x.connected) || this.members[0] || {}).clientId || null;
@@ -270,9 +324,8 @@ class Room {
     const humans = this.seated().filter(m => m.connected);
     this.clampAis();
     if (humans.length + this.settings.ais < 2) return '사람과 컴퓨터를 합쳐 2명 이상이어야 해요.';
-    const personas = Stud.shuffle(Stud.PERSONAS.slice(), Math.random).slice(0, this.settings.ais);
-    const players = humans.map(m => ({ name: m.name, isHuman: true }))
-      .concat(personas.map(p => ({ name: p.name, persona: p })));
+    const personas = Stud.pickAiPlayers(this.settings.ais, Math.random);
+    const players = humans.map(m => ({ name: m.name, isHuman: true })).concat(personas);
     this.members.forEach(m => { m.playerId = null; });
     humans.forEach((m, i) => { m.playerId = i; });
     this.runId++;
@@ -280,7 +333,10 @@ class Room {
     this.pending = null;
     this.clearNext();
     this.payout = payoutTable(players.length);
-    this.t = new Stud.Tournament({ players, controller: this.controller(this.runId), handsPerLevel: this.settings.hpl, sims: 160 });
+    this.lastLevel = 0;
+    this.reportedBusts = new Set();
+    this.system(`대회 시작 · ${players.length}명 (사람 ${humans.length} + 컴퓨터 ${personas.length}) · 시작 스택 10,000`);
+    this.t = new Stud.Tournament({ players, controller: this.controller(this.runId), handsPerLevel: this.settings.hpl, sims: 160, paidPlaces: this.payout.length });
     this.phase = 'playing';
     const runId = this.runId;
     const t = this.t;
@@ -309,6 +365,7 @@ class Room {
     this.clearNext();
     this.t = null;
     this.phase = 'lobby';
+    this.system('같은 방에서 새 대회를 준비해요');
     this.members = this.members.filter(m => m.connected);
     this.members.forEach((m, i) => { m.playerId = null; m.spectator = i >= MAX_PLAYERS; });
     this.clampAis();
@@ -343,6 +400,36 @@ class Room {
   }
 
   /**
+   * 엔진 이벤트 중 사람에게 의미 있는 것만 채팅 안내로 남긴다.
+   * @param {string} type 엔진 이벤트 종류
+   * @param {object} t Tournament
+   * @returns {void}
+   */
+  announce(type, t) {
+    if (!t) return;
+    if (type === 'deal' && t.hand && t.hand.street === 3) {
+      const idx = t.levelIndex();
+      if (idx !== this.lastLevel) {
+        this.lastLevel = idx;
+        const L = Stud.LEVELS[idx];
+        this.system(`레벨 ${idx + 1} 시작 · 앤티 ${Stud.fmt(L.ante)} / 브링인 ${Stud.fmt(L.bringIn)} / ${Stud.fmt(L.small)}-${Stud.fmt(L.big)}`);
+      }
+    } else if (type === 'settle') {
+      t.players.filter(p => p.isHuman && p.won > 0).forEach(p => {
+        this.system(`핸드 #${t.handNo} · ${p.name} +${Stud.fmt(p.won)}${p.result ? ` (${p.result})` : ' (상대 전원 폴드)'}`);
+      });
+    } else if (type === 'handEnd') {
+      t.players.filter(p => p.isHuman && p.busted && !this.reportedBusts.has(p.id)).forEach(p => {
+        this.reportedBusts.add(p.id);
+        this.system(`${p.name} 님이 ${p.place}위로 탈락했어요`);
+      });
+    } else if (type === 'tournamentEnd') {
+      const w = t.players.find(p => p.place === 1);
+      if (w) this.system(`대회 종료 · 우승 ${w.name}${w.isHuman ? '' : ' (컴퓨터)'} · ${t.handNo}핸드`);
+    }
+  }
+
+  /**
    * 엔진과 방을 잇는 컨트롤러를 만든다. 리매치로 runId가 바뀌면 이전 대회는 영원히 멈춘다.
    * @param {number} runId 이 대회의 실행 번호
    * @returns {object} onEvent / wait / humanAction / afterHand
@@ -351,9 +438,11 @@ class Room {
     const alive = () => runId === this.runId;
     const never = () => new Promise(() => {});
     return {
-      onEvent: type => {
+      onEvent: (type, data, t) => {
         if (!alive()) return;
         this.touch();
+        if (type === 'talk' && data) this.pushChat({ kind: 'user', from: `ai-${data.id}`, name: data.name, text: data.text });
+        this.announce(type, t);
         if (type === 'tournamentEnd') this.phase = 'finished';
         this.queueFlush();
       },
@@ -589,6 +678,7 @@ function attach(ws, room, msg) {
   const member = room.addMember(msg.token, cleanName(msg.name), ws);
   ws.ctx = { room, member };
   send(ws, { t: 'joined', code: room.code, clientId: member.clientId });
+  send(ws, { t: 'chat', reset: true, items: room.chat });
   room.queueFlush();
 }
 
@@ -635,6 +725,8 @@ function handle(ws, msg) {
       return room.submitAct(member, msg);
     case 'ready':
       return room.ready(member);
+    case 'chat':
+      return room.say(member, msg.text);
     case 'rematch':
       if (isHost && room.phase === 'finished') room.rematch();
       return undefined;

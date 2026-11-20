@@ -6,7 +6,8 @@
  *  - 족보 평가: 3~7장 평가, 오픈 카드만의 평가(4구 이후 선 결정용)
  *  - 몬테카를로 승률 추정: AI 판단과 연습 모드 힌트에 사용
  *  - Tournament: 앤티·브링인·complete, 고정 리밋(캡 = 베트 + 3레이즈), 사이드팟, 레벨, 탈락·순위
- *  - AI 판단: 성향(페르소나)별 임계값으로 폴드/콜/레이즈 결정
+ *  - AI 판단: 10가지 스타일 + 사람 같은 상태(손읽기, 상대 적응, 틸트, 이미지, 기어, 스택·버블 압박, 기억 실수, 채팅)
+ *    이름과 스타일은 대회마다 무작위
  */
 const Stud = (() => {
   const SUIT_SYMBOLS = ['♣', '♦', '♥', '♠'];
@@ -36,14 +37,48 @@ const Stud = (() => {
     { ante: 1500, bringIn: 2000, small: 8000, big: 16000 }
   ];
 
-  const PERSONAS = [
-    { id: 'rock', name: 'Linda', enter: 1.45, raise: 2.1, aggr: 0.35, bluff: 0.02, steal: 0.06, sticky: 0.0, respect: 0.2 },
-    { id: 'lag', name: 'Victor', enter: 1.1, raise: 1.45, aggr: 0.75, bluff: 0.18, steal: 0.6, sticky: 0.05, respect: 0.08 },
-    { id: 'tag', name: 'Kenji', enter: 1.3, raise: 1.7, aggr: 0.62, bluff: 0.08, steal: 0.35, sticky: 0.02, respect: 0.14 },
-    { id: 'station', name: 'Marco', enter: 1.0, raise: 2.3, aggr: 0.2, bluff: 0.03, steal: 0.05, sticky: 0.35, respect: 0.04 },
-    { id: 'solid', name: 'Sophie', enter: 1.25, raise: 1.65, aggr: 0.55, bluff: 0.1, steal: 0.4, sticky: 0.08, respect: 0.14 },
-    { id: 'loose', name: 'Dmitri', enter: 1.05, raise: 1.95, aggr: 0.3, bluff: 0.06, steal: 0.15, sticky: 0.2, respect: 0.08 }
+  const STYLE_DEFAULTS = { slowplay: 0, semibluff: 0, chase: 0, focus: 0.97, tiltProne: 0.4, recover: 0.18, shift: 0, adapt: 0.5, icm: 0.8, talk: 0.15 };
+  const STYLES = [
+    { id: 'rock', label: '바위', desc: '좋은 패 위주로 들어오고 블러프가 드물다. 버블에서 특히 몸을 사린다',
+      enter: 1.55, raise: 2.0, aggr: 0.4, bluff: 0.03, steal: 0.12, sticky: 0.0, respect: 0.12,
+      focus: 0.98, tiltProne: 0.65, recover: 0.12, shift: 0, adapt: 0.5, icm: 1.0, talk: 0.06 },
+    { id: 'weakTight', label: '겁쟁이 타이트', desc: '들어오긴 하지만 압박을 받으면 쉽게 접는다',
+      enter: 1.3, raise: 1.95, aggr: 0.3, bluff: 0.03, steal: 0.12, sticky: 0.0, respect: 0.25,
+      focus: 0.95, tiltProne: 0.78, recover: 0.15, shift: 0, adapt: 0.3, icm: 1.2, talk: 0.075 },
+    { id: 'tag', label: '정석 (TAG)', desc: '참가는 적고 들어오면 공격적. 기어를 바꾸고 상대 습관에 맞춘다',
+      enter: 1.4, raise: 1.65, aggr: 0.65, bluff: 0.1, steal: 0.45, sticky: 0.03, respect: 0.08, semibluff: 0.3,
+      focus: 0.99, tiltProne: 0.26, recover: 0.24, shift: 0.5, adapt: 0.8, icm: 1.0, talk: 0.125 },
+    { id: 'solid', label: '균형형', desc: '스틸·블러프·슬로플레이를 섞고, 틸트에 강하며 상대에 가장 잘 적응한다',
+      enter: 1.32, raise: 1.6, aggr: 0.6, bluff: 0.12, steal: 0.45, sticky: 0.06, respect: 0.08, semibluff: 0.35, slowplay: 0.15,
+      focus: 0.99, tiltProne: 0.195, recover: 0.27, shift: 0.6, adapt: 0.9, icm: 1.0, talk: 0.15 },
+    { id: 'lag', label: '공격형 (LAG)', desc: '많이 들어오고 많이 올린다. 드로우로도 세게 치고 큰 스택일 때 더 몰아붙인다',
+      enter: 1.18, raise: 1.4, aggr: 0.75, bluff: 0.18, steal: 0.65, sticky: 0.06, respect: 0.05, semibluff: 0.45,
+      focus: 0.97, tiltProne: 0.455, recover: 0.21, shift: 0.5, adapt: 0.7, icm: 0.6, talk: 0.225 },
+    { id: 'maniac', label: '매니악', desc: '거의 모든 판에 들어와 레이즈를 퍼붓는다. 틸트에 약하다',
+      enter: 0.9, raise: 1.15, aggr: 0.88, bluff: 0.3, steal: 0.85, sticky: 0.12, respect: 0.02, semibluff: 0.6,
+      focus: 0.9, tiltProne: 0.78, recover: 0.18, shift: 0.3, adapt: 0.3, icm: 0.2, talk: 0.3 },
+    { id: 'station', label: '콜링 스테이션', desc: '웬만하면 콜하고 잘 안 접는다. 레이즈는 드물다',
+      enter: 1.12, raise: 2.2, aggr: 0.22, bluff: 0.03, steal: 0.1, sticky: 0.3, respect: 0.03, chase: 0.4,
+      focus: 0.9, tiltProne: 0.52, recover: 0.18, shift: 0, adapt: 0.2, icm: 0.4, talk: 0.2 },
+    { id: 'fish', label: '드로우 추격자', desc: '느슨하게 들어와 플러시·스트레이트 드로우를 끝까지 쫓는다',
+      enter: 1.1, raise: 1.9, aggr: 0.3, bluff: 0.06, steal: 0.2, sticky: 0.18, respect: 0.05, chase: 0.6,
+      focus: 0.88, tiltProne: 0.65, recover: 0.18, shift: 0, adapt: 0.2, icm: 0.3, talk: 0.25 },
+    { id: 'trapper', label: '함정파', desc: '아주 강한 패는 3~5구에서 숨겼다가 6·7구에 레이즈한다',
+      enter: 1.35, raise: 1.55, aggr: 0.7, bluff: 0.06, steal: 0.3, sticky: 0.08, respect: 0.08, slowplay: 0.65,
+      focus: 0.98, tiltProne: 0.39, recover: 0.21, shift: 0.3, adapt: 0.6, icm: 0.9, talk: 0.1 },
+    { id: 'thief', label: '앤티 도둑', desc: '3구 스틸을 자주 하고, 잘 접는 상대를 골라 훔친다. 저항을 받으면 물러난다',
+      enter: 1.5, raise: 1.75, aggr: 0.5, bluff: 0.1, steal: 0.85, sticky: 0.0, respect: 0.15,
+      focus: 0.97, tiltProne: 0.39, recover: 0.21, shift: 0.4, adapt: 0.7, icm: 1.0, talk: 0.125 }
   ];
+  const TALK = {
+    badBeat: ['와… 그게 들어오네', '7구 실화냐', '하…', '마지막 장 무슨 일이야', '이걸 지네'],
+    lose: ['nh', 'nh ㅋㅋ', '굿 핸드', '졌다'],
+    win: ['ty', 'ㅎㅎ', '운 좋았다', 'ty ty'],
+    caught: ['ㅋㅋ 들켰네', '아 콜하네…', '블러프 실패'],
+    bust: ['gg', 'gg 수고', '여기까지네', 'gg 재밌었다']
+  };
+  const AI_NAMES = ['Linda', 'Victor', 'Kenji', 'Marco', 'Sophie', 'Dmitri', 'Aiko', 'Rafael', 'Nora', 'Hugo', 'Priya', 'Sven'];
+  const PERSONAS = STYLES;
 
   /**
    * 카드 정수에서 숫자(2~14)를 꺼낸다.
@@ -347,6 +382,45 @@ const Stud = (() => {
   }
 
   /**
+   * 공개 행동 통계의 빈 값.
+   * @returns {object} 통계 (hands, vpip, agg, pas, stealOpp, steal, ftsOpp, fts, ftbOpp, ftb, sd, bluffsShown)
+   */
+  function newStats() {
+    return { hands: 0, vpip: 0, agg: 0, pas: 0, stealOpp: 0, steal: 0, ftsOpp: 0, fts: 0, ftbOpp: 0, ftb: 0, sd: 0, bluffsShown: 0 };
+  }
+
+  /**
+   * 컴퓨터 한 명의 사람 같은 상태 (틸트 0~1, 이미지 -1~1, 기어 -1/0/1과 남은 핸드).
+   * @param {object} persona 스타일
+   * @param {function(): number} rng 난수 함수
+   * @returns {object} 상태
+   */
+  function newMind(persona, rng) {
+    return { tilt: 0, image: 0, gear: 0, gearLeft: 4 + Math.floor(rng() * 8) };
+  }
+
+  /**
+   * 플레이어 스타일에 기본값을 채워 돌려준다.
+   * @param {object} p 플레이어
+   * @returns {object} 스타일 값
+   */
+  function styleOf(p) {
+    return Object.assign({}, STYLE_DEFAULTS, p.persona || STYLES[2]);
+  }
+
+  /**
+   * 표본이 적을 때 사전값 쪽으로 당긴 비율 (베이지안 평활).
+   * @param {number} x 횟수
+   * @param {number} n 기회 수
+   * @param {number} prior 사전 비율
+   * @param {number} k 사전 표본 크기
+   * @returns {number} 평활된 비율
+   */
+  function rate(x, n, prior, k) {
+    return (x + prior * k) / (n + k);
+  }
+
+  /**
    * 토너먼트 한 개를 진행하는 클래스.
    * 내부 요소
    *  - players: 좌석 순으로 정렬된 플레이어 (stack, cards, bet, contrib, folded, allIn, busted, place ...)
@@ -365,6 +439,7 @@ const Stud = (() => {
      * @param {number} [opts.sims=160] AI 승률 추정 시뮬레이션 횟수
      * @param {function(): number} [opts.rng] 난수 함수
      * @param {object} [opts.restore] snapshot()으로 저장한 이어하기 데이터
+     * @param {number} [opts.paidPlaces] 입상 인원 (버블 판단용, 생략 시 인원으로 추정)
      */
     constructor(opts) {
       this.rng = opts.rng || Math.random;
@@ -372,6 +447,8 @@ const Stud = (() => {
       this.handsPerLevel = opts.handsPerLevel || 6;
       this.startingStack = opts.startingStack || 10000;
       this.sims = opts.sims || 160;
+      const n = opts.players.length;
+      this.paidPlaces = opts.paidPlaces || (n >= 6 ? 3 : n >= 4 ? 2 : 1);
       this.handNo = 0;
       this.hand = null;
       this.log = [];
@@ -391,7 +468,11 @@ const Stud = (() => {
         contrib: 0,
         folded: true,
         allIn: false,
-        inHand: false
+        inHand: false,
+        handAgg: 0,
+        vpipHand: false,
+        st: newStats(),
+        mind: p.persona ? newMind(p.persona, this.rng) : null
       }));
       if (opts.restore) this.applySnapshot(opts.restore);
       this.players.sort((a, b) => a.seat - b.seat);
@@ -580,10 +661,11 @@ const Stud = (() => {
           inHand: !p.busted, folded: p.busted, startStack: p.stack
         });
       });
+      this.beginHandMinds();
       this.hand = {
         no: this.handNo, levelIndex: this.levelIndex(), deck, street: 3, currentBet: 0, raises: 0,
         unit: L.small, bringInSeat: null, bringInPending: false, actingSeat: null, deadUp: [],
-        pots: [], showdown: false, done: false
+        pots: [], showdown: false, done: false, stealer: null, lastAgg: {}
       };
       this.addLog(`핸드 #${this.handNo} · 레벨 ${this.levelIndex() + 1} (앤티 ${fmt(L.ante)} / 브링인 ${fmt(L.bringIn)} / ${fmt(L.small)}-${fmt(L.big)})`, 'head');
       this.players.filter(p => p.inHand).forEach(p => this.commit(p, L.ante, false));
@@ -735,6 +817,7 @@ const Stud = (() => {
     applyAction(p, a) {
       const h = this.hand;
       const allInTag = () => (p.allIn ? ' (올인)' : '');
+      this.recordStats(p, a);
       if (a.type === 'fold') {
         p.folded = true;
         p.acted = true;
@@ -771,10 +854,137 @@ const Stud = (() => {
           others.forEach(o => { if (o.acted) o.mayRaise = false; o.acted = false; });
         }
         p.acted = true;
+        p.handAgg++;
+        h.lastAgg[h.street] = p.id;
         const label = a.type === 'bet' ? 'Bet' : a.type === 'complete' ? 'Complete' : 'Raise';
         p.lastAction = `${label} ${fmt(p.bet)}`;
         this.addLog(`${p.name}: ${a.type} ${a.type === 'bet' ? '' : '→ '}${fmt(p.bet)}${allInTag()}`);
       }
+    }
+
+    /**
+     * 핸드 시작 시 사람 같은 상태를 갱신한다: 핸드별 표시 초기화, 틸트·이미지 회복, 기어 변속.
+     * @returns {void}
+     */
+    beginHandMinds() {
+      this.players.forEach(p => {
+        p.handAgg = 0;
+        p.vpipHand = false;
+        if (!p.inHand) return;
+        p.st.hands++;
+        const m = p.mind;
+        if (!m) return;
+        const P = styleOf(p);
+        m.tilt *= 1 - P.recover;
+        if (m.tilt < 0.03) m.tilt = 0;
+        m.image *= 0.85;
+        if (P.shift > 0 && --m.gearLeft <= 0) {
+          const r = this.rng();
+          m.gear = r < P.shift / 2 ? -1 : r < P.shift ? 1 : 0;
+          m.gearLeft = 8 + Math.floor(this.rng() * 7);
+        }
+      });
+    }
+
+    /**
+     * 3구에서 이 플레이어가 스틸 자리인지: 아직 아무도 브링인에 따라오지 않았고, 남은 사람들의 도어 카드가 모두 더 낮음.
+     * @param {object} p 플레이어
+     * @returns {boolean} 스틸 자리 여부
+     */
+    isStealSpot(p) {
+      const h = this.hand;
+      if (h.street !== 3 || h.raises !== 0 || p.seat === h.bringInSeat) return false;
+      const door = rankOf(p.cards[2].c);
+      const callers = this.live().filter(o => o !== p && o.seat !== h.bringInSeat && o.bet > 0).length;
+      const toAct = this.actors().filter(o => o !== p && (!o.acted || o.seat === h.bringInSeat));
+      return callers === 0 && toAct.every(o => rankOf(o.cards[2].c) < door);
+    }
+
+    /**
+     * 모두가 볼 수 있는 행동 통계를 쌓는다 (컴퓨터들이 상대 습관을 읽는 데 씀, 사람도 포함).
+     * 공격/콜 횟수, 3구 참가, 스틸 시도와 성공, 스틸에 대한 폴드, 4구 이후 베팅에 대한 폴드.
+     * @param {object} p 액션하는 플레이어
+     * @param {{type:string}} a 액션 (적용 전 상태 기준으로 기록)
+     * @returns {void}
+     */
+    recordStats(p, a) {
+      const h = this.hand;
+      const st = p.st;
+      const toCall = Math.max(0, h.currentBet - p.bet);
+      const aggressive = a.type === 'bet' || a.type === 'raise' || a.type === 'complete';
+      if (aggressive) st.agg++;
+      else if (a.type === 'call') st.pas++;
+      if (h.street === 3) {
+        if (a.type === 'call' || aggressive) p.vpipHand = true;
+        if (this.isStealSpot(p)) {
+          st.stealOpp++;
+          if (aggressive) {
+            st.steal++;
+            h.stealer = p.id;
+          }
+        } else if (h.stealer !== null && h.stealer !== p.id && h.raises === 1 && toCall > 0) {
+          st.ftsOpp++;
+          if (a.type === 'fold') st.fts++;
+        }
+      } else if (toCall > 0) {
+        st.ftbOpp++;
+        if (a.type === 'fold') st.ftb++;
+      }
+    }
+
+    /**
+     * 핸드가 끝난 뒤 사람처럼 반응한다: 참가·쇼다운 통계, 블러프가 들켰는지(이미지),
+     * 큰 손실·역전패에 따른 틸트, 그리고 가끔 채팅 한마디(핸드당 최대 1명).
+     * @returns {void}
+     */
+    reflect() {
+      const h = this.hand;
+      const streets = Object.keys(h.lastAgg).map(Number);
+      const finalStreet = streets.length ? Math.max(...streets) : 0;
+      const lastAggId = finalStreet ? h.lastAgg[finalStreet] : null;
+      let talk = null;
+      this.players.filter(p => p.inHand).forEach(p => {
+        if (p.vpipHand) p.st.vpip++;
+        const lost = Math.max(0, p.startStack - p.stack);
+        const frac = p.startStack ? lost / p.startStack : 0;
+        const m = p.mind;
+        if (h.showdown && !p.folded) {
+          p.st.sd++;
+          const cat = scoreCategory(p.score);
+          const caught = p.id === lastAggId && finalStreet >= 6 && cat <= 1 && p.won === 0;
+          if (caught) p.st.bluffsShown++;
+          if (!m) return;
+          const P = styleOf(p);
+          if (caught) {
+            m.image = -1;
+            talk = talk || this.pickTalk(p, 'caught');
+          } else if (p.won > 0 && cat >= 3 && p.handAgg > 0) {
+            m.image = Math.max(m.image, 0.6);
+          }
+          const badBeat = p.won === 0 && cat >= 2 && frac >= 0.15;
+          if (frac >= 0.15) {
+            m.tilt = Math.min(1, m.tilt + P.tiltProne * Math.min(1, frac * 2) * (badBeat ? 1.5 : 1));
+            talk = talk || this.pickTalk(p, badBeat ? 'badBeat' : 'lose');
+          } else if (p.won > 0 && p.won >= p.startStack * 0.5) {
+            talk = talk || this.pickTalk(p, 'win');
+          }
+        } else if (m && p.folded && frac >= 0.4) {
+          m.tilt = Math.min(1, m.tilt + styleOf(p).tiltProne * Math.min(1, frac * 2) * 0.6);
+        }
+      });
+      if (talk) this.emit('talk', talk);
+    }
+
+    /**
+     * 스타일별 수다 확률에 따라 채팅 한마디를 고른다.
+     * @param {object} p 컴퓨터 플레이어
+     * @param {string} kind TALK의 상황 이름
+     * @returns {{id:number,name:string,text:string}|null} 한마디 또는 null
+     */
+    pickTalk(p, kind) {
+      if (this.rng() >= styleOf(p).talk) return null;
+      const lines = TALK[kind];
+      return { id: p.id, name: p.name, text: lines[Math.floor(this.rng() * lines.length)] };
     }
 
     /**
@@ -861,6 +1071,7 @@ const Stud = (() => {
       }
       h.done = true;
       h.actingSeat = null;
+      this.reflect();
     }
 
     /**
@@ -875,13 +1086,230 @@ const Stud = (() => {
         p.busted = true;
         p.place = place++;
         this.addLog(`${p.name} 탈락 · ${p.place}위`, 'bust');
+        if (p.mind) {
+          const line = this.pickTalk(p, 'bust');
+          if (line) this.emit('talk', line);
+        }
       });
     }
   }
 
   /**
-   * AI 판단: 몬테카를로 승률을 상대 수로 정규화한 세기(strength)와 성향별 임계값으로 액션을 고른다.
-   * 3구에서는 참가/스틸/레이즈 기준, 4구부터는 팟 오즈와 레이즈 기준을 쓴다.
+   * 카드들에서 같은 무늬 최다 장수와, 연속 5칸 안에 든 숫자 최다 개수를 센다 (A는 1로도 셈).
+   * @param {number[]} cards 카드 정수 배열
+   * @returns {{flush:number, straight:number}} 드로우 정보
+   */
+  function drawInfo(cards) {
+    const sc = [0, 0, 0, 0];
+    let mask = 0;
+    cards.forEach(c => {
+      sc[suitOf(c)]++;
+      mask |= 1 << rankOf(c);
+    });
+    if (mask & (1 << 14)) mask |= 2;
+    let straight = 0;
+    for (let lo = 1; lo <= 10; lo++) {
+      let k = 0;
+      for (let r = lo; r < lo + 5; r++) if (mask & (1 << r)) k++;
+      straight = Math.max(straight, k);
+    }
+    return { flush: Math.max(...sc), straight };
+  }
+
+  /**
+   * 아직 카드가 남았고, 완성 전인 플러시·스트레이트 드로우를 들고 있는지 판단한다.
+   * 4장 드로우, 또는 3·4구의 3장 플러시를 드로우로 본다.
+   * @param {number[]} cards 내 카드
+   * @param {number} street 현재 스트리트
+   * @returns {boolean} 드로우 여부
+   */
+  function isDraw(cards, street) {
+    if (street >= 7) return false;
+    const d = drawInfo(cards);
+    if (d.flush >= 5 || d.straight >= 5) return false;
+    return d.flush >= 4 || d.straight >= 4 || (street <= 4 && d.flush >= 3);
+  }
+
+  /**
+   * 컴퓨터 참가자를 만든다: 10가지 스타일과 이름 풀에서 겹치지 않게 무작위로 뽑는다.
+   * @param {number} n 컴퓨터 수 (최대 10)
+   * @param {function(): number} rng 난수 함수
+   * @returns {{name:string, persona:object}[]} 참가자 목록
+   */
+  function pickAiPlayers(n, rng) {
+    const styles = shuffle(STYLES.slice(), rng);
+    const names = shuffle(AI_NAMES.slice(), rng);
+    return Array.from({ length: Math.min(n, STYLES.length) }, (_, i) => ({ name: names[i], persona: styles[i] }));
+  }
+
+  /**
+   * 상대가 이번 핸드에 공격(베트·레이즈)했을 때, 그 상대의 현재 패가 그럴듯한 정도(가중치).
+   * 투페어 이상은 1, 원페어·드로우·하이카드 순으로 낮고, 레이즈를 여러 번 했으면 더 낮다.
+   * 평소 공격적이거나 블러프가 들킨 적 있는 상대는 약한 패 가중치를 올린다.
+   * @param {number} cat 현재 패 분류
+   * @param {boolean} drawing 드로우 여부
+   * @param {number} agg 이번 핸드 공격 횟수
+   * @param {number} bluffy 약한 패 가중 배수
+   * @returns {number} 0~1 가중치
+   */
+  function rangeWeight(cat, drawing, agg, bluffy) {
+    if (cat >= 2) return 1;
+    const strong = agg >= 2;
+    let w = cat === 1 ? (strong ? 0.45 : 0.75) : (strong ? 0.08 : 0.22);
+    if (drawing) w = Math.max(w, strong ? 0.45 : 0.7);
+    return Math.min(1, w * bluffy);
+  }
+
+  /**
+   * 상대의 평소 공격 비율(베트·레이즈 ÷ 베트·레이즈·콜, 표본이 적으면 0.35 쪽으로 당김).
+   * @param {object} o 플레이어
+   * @returns {number} 0~1
+   */
+  function aggFreq(o) {
+    return rate(o.st.agg, o.st.agg + o.st.pas, 0.35, 8);
+  }
+
+  /**
+   * 손읽기 승률: 몬테카를로로 상대 히든·앞으로 받을 카드를 뽑되, 이번 핸드에 공격한 상대는
+   * 그 공격과 어울리는 패일수록 가중치를 크게 준다. 죽은 카드는 집중력(focus)만큼만 기억한다.
+   * @param {Tournament} t 토너먼트
+   * @param {object} p 판단하는 플레이어
+   * @param {number} sims 시뮬레이션 횟수
+   * @param {number} focus 죽은 카드를 기억할 확률
+   * @returns {number} 0~1 가중 승률
+   */
+  function readEquity(t, p, sims, focus) {
+    const h = t.hand;
+    const rng = t.rng;
+    const my = p.cards.map(x => x.c);
+    const opps = t.live().filter(o => o !== p);
+    if (!opps.length) return 1;
+    const known = new Set(my);
+    h.deadUp.forEach(c => { if (rng() < focus) known.add(c); });
+    const info = opps.map(o => {
+      const up = t.upCards(o);
+      up.forEach(c => known.add(c));
+      const af = aggFreq(o);
+      const bluffy = Math.min(3.5, Math.pow(af / 0.35, 1.5) * (1 + 0.15 * o.st.bluffsShown));
+      return { up, hidden: o.cards.length - up.length, future: 7 - o.cards.length, agg: o.handAgg || 0, bluffy };
+    });
+    const pool = [];
+    for (let c = 8; c < 60; c++) if (!known.has(c)) pool.push(c);
+    const myNeed = 7 - my.length;
+    const total = myNeed + info.reduce((s, o) => s + o.hidden + o.future, 0);
+    if (total > pool.length) return 1 / (opps.length + 1);
+    let acc = 0;
+    let wsum = 0;
+    for (let n = 0; n < sims; n++) {
+      for (let i = 0; i < total; i++) {
+        const j = i + Math.floor(rng() * (pool.length - i));
+        const tmp = pool[i];
+        pool[i] = pool[j];
+        pool[j] = tmp;
+      }
+      let k = 0;
+      const mine = my.slice();
+      for (let i = 0; i < myNeed; i++) mine.push(pool[k++]);
+      const myScore = evaluate(mine);
+      let w = 1;
+      let lost = false;
+      let ties = 0;
+      for (let o = 0; o < info.length; o++) {
+        const op = info[o];
+        const cur = op.up.slice();
+        for (let i = 0; i < op.hidden; i++) cur.push(pool[k++]);
+        if (op.agg > 0) w *= rangeWeight(scoreCategory(evaluate(cur)), isDraw(cur, h.street), op.agg, op.bluffy);
+        for (let i = 0; i < op.future; i++) cur.push(pool[k++]);
+        if (lost) continue;
+        const sc = evaluate(cur);
+        if (sc > myScore) lost = true;
+        else if (sc === myScore) ties++;
+      }
+      wsum += w;
+      if (!lost) acc += w / (ties + 1);
+    }
+    return wsum > 0 ? acc / wsum : 1 / (opps.length + 1);
+  }
+
+  /**
+   * 지금 상황에 맞춰 스타일 값을 조정한다 ("실제 사람이라면"):
+   *  - 기어: 정해진 핸드마다 타이트/루즈로 바꿔 읽히지 않게
+   *  - 틸트: 참가 기준↓, 공격·블러프·콜↑, 레이즈에 덜 겁먹고 죽은 카드를 덜 기억
+   *  - 이미지: 블러프가 들킨 뒤에는 블러프를 줄이고, 센 패를 보여준 뒤에는 늘림
+   *  - 스택(M = 스택 ÷ 한 바퀴 앤티+브링인): 짧으면 한 판에 걸고, 크면 작은 스택들을 압박
+   *  - 버블: 중간 스택은 몸을 사리고 칩 리더는 스틸을 늘림. 헤즈업은 모두 느슨하게
+   * @param {Tournament} t 토너먼트
+   * @param {object} p 컴퓨터 플레이어
+   * @returns {object} 조정된 스타일 값 (+ commit: 숏스택으로 한 판에 걸 상황)
+   */
+  function effectiveStyle(t, p) {
+    const P = styleOf(p);
+    if (P.legacy || !p.mind) return Object.assign(P, { commit: false });
+    const m = p.mind;
+    const L = t.level;
+    const alive = t.alive();
+    const stacks = alive.map(o => o.stack);
+    const avg = stacks.reduce((a, b) => a + b, 0) / alive.length;
+    const mRatio = p.stack / (L.ante * alive.length + L.bringIn);
+    const bubble = alive.length === t.paidPlaces + 1;
+    const nearBubble = alive.length === t.paidPlaces + 2 && t.paidPlaces >= 2;
+    const leader = p.stack === Math.max(...stacks);
+    const shortest = p.stack === Math.min(...stacks);
+    P.enter -= 0.15 * m.gear;
+    P.aggr += 0.08 * m.gear;
+    P.steal += 0.15 * m.gear;
+    P.bluff += 0.04 * m.gear;
+    P.enter -= 0.35 * m.tilt;
+    P.aggr += 0.25 * m.tilt;
+    P.bluff += 0.12 * m.tilt;
+    P.sticky += 0.2 * m.tilt;
+    P.respect *= 1 - 0.6 * m.tilt;
+    P.focus -= 0.25 * m.tilt;
+    P.bluff *= 1 + 0.8 * m.image;
+    P.commit = mRatio < 4;
+    if (mRatio < 4) {
+      P.enter -= 0.3;
+      P.steal += 0.2;
+      P.respect *= 0.6;
+    } else if (mRatio < 8) {
+      P.enter -= 0.1;
+      P.steal += 0.1;
+    }
+    if (p.stack > avg * 1.6) {
+      P.steal += 0.15;
+      P.aggr += 0.05;
+    }
+    const press = bubble ? 1 : nearBubble ? 0.5 : 0;
+    if (press && !leader && !shortest) {
+      P.enter += 0.2 * P.icm * press;
+      P.respect += 0.1 * P.icm * press;
+      P.bluff *= 1 - 0.5 * P.icm * press;
+      P.steal *= 1 - 0.3 * P.icm * press;
+    }
+    if (press && leader) {
+      P.steal += 0.2 * press;
+      P.aggr += 0.1 * press;
+    }
+    if (alive.length === 2) {
+      P.enter -= 0.35;
+      P.steal += 0.25;
+      P.aggr += 0.1;
+      P.sticky += 0.1;
+    } else if (alive.length <= t.paidPlaces) {
+      P.enter -= 0.05;
+    }
+    ['aggr', 'bluff', 'steal', 'sticky', 'respect'].forEach(k => { P[k] = Math.max(0, Math.min(0.98, P[k])); });
+    P.focus = Math.max(0.5, Math.min(1, P.focus));
+    return P;
+  }
+
+  /**
+   * AI 판단 ("지역 대회 Day1 우승 경험자" 수준을 기준으로, 스타일과 상황에 따라 흔들림):
+   *  - 손읽기 승률(readEquity)을 상대 수로 정규화한 세기와 팟 오즈로 판단
+   *  - 상대 통계로 적응: 잘 접는 상대에게 스틸·블러프를 늘리고, 콜을 잘하는 상대에게는 블러프를 줄이고 얇게 밸류 베팅,
+   *    스틸을 자주 하는 상대에게는 넓게 방어, 레이즈를 남발하는 상대에게는 덜 겁먹고 더 자주 맞받아침
+   *  - 슬로플레이·세미블러프·드로우 추격, 숏스택 올인 각오, 팟에 많이 넣었으면 쉽게 안 접음
+   * persona.legacy가 켜져 있으면 이전 방식(무작위 승률, 상황 보정 없음)으로 판단한다 (비교 테스트용).
    * @param {Tournament} t 토너먼트
    * @param {object} p AI 플레이어
    * @param {object[]} legal 가능한 액션
@@ -889,51 +1317,84 @@ const Stud = (() => {
    */
   function aiDecide(t, p, legal) {
     const h = t.hand;
-    const P = p.persona || PERSONAS[2];
+    const P = effectiveStyle(t, p);
+    const smart = !P.legacy;
     const find = type => legal.find(a => a.type === type);
     const aggressive = find('raise') || find('complete') || find('bet');
     const passive = find('check') || find('call');
     const rnd = t.rng();
     const opps = t.live().filter(o => o !== p);
     const n = opps.length;
-    const eq = estimateEquity(p.cards.map(x => x.c), opps.map(o => ({ up: t.upCards(o) })), h.deadUp, t.sims, t.rng);
+    const my = p.cards.map(x => x.c);
+    const eq = smart ? readEquity(t, p, t.sims, P.focus) : estimateEquity(my, opps.map(o => ({ up: t.upCards(o) })), h.deadUp, t.sims, t.rng);
     const strength = eq * (n + 1);
     const toCall = Math.max(0, h.currentBet - p.bet);
     const facing = Math.max(0, h.raises - (h.street === 3 ? 1 : 0));
+    const adapt = smart ? P.adapt : 0;
+    const raiserId = h.lastAgg[h.street];
+    const raiser = raiserId !== undefined && raiserId !== p.id ? t.players.find(o => o.id === raiserId) : null;
+    if (raiser && adapt) {
+      const af = aggFreq(raiser);
+      P.respect *= 1 + adapt * (Math.max(0.3, Math.min(1.5, 0.35 / af)) - 1);
+      P.raise *= 1 - 0.25 * adapt * Math.max(0, Math.min(1, (af - 0.35) / 0.35));
+    }
     const adj = strength * (1 - P.respect * facing);
     const shortStack = p.stack <= h.unit * 2;
+    const draw = isDraw(my, h.street);
+    const trap = adj >= P.raise + 0.6 && h.street <= 5 && t.rng() < P.slowplay;
+    const ftb = n ? opps.reduce((s, o) => s + rate(o.st.ftb, o.st.ftbOpp, 0.4, 8), 0) / n : 0.4;
+    const bluffMul = Math.max(0.2, Math.min(2, 1 + adapt * (ftb / 0.4 - 1)));
+    const valueMul = 1 - adapt * 0.15 * Math.max(0, (0.4 - ftb) / 0.4);
+    const committed = smart && (P.commit || p.contrib >= (p.stack + p.contrib) * 0.4);
     if (find('bringin')) {
-      return find('complete') && strength >= P.raise + 0.2 && rnd < P.aggr ? find('complete') : find('bringin');
+      return find('complete') && strength >= P.raise + 0.2 && rnd < P.aggr && !trap ? find('complete') : find('bringin');
     }
     if (toCall === 0) {
+      if (trap) return passive;
       const myUp = t.upCards(p);
-      const scary = scoreCategory(evaluateShowing(myUp)) >= 1 || myUp.some(c => rankOf(c) >= 13) ||
+      const myShow = evaluateShowing(myUp);
+      const scary = scoreCategory(myShow) >= 1 || myUp.some(c => rankOf(c) >= 13) ||
         [0, 1, 2, 3].some(s => myUp.filter(c => suitOf(c) === s).length >= 3);
-      if (aggressive && adj >= P.raise * 0.85 && rnd < Math.min(0.95, P.aggr + 0.25)) return aggressive;
-      if (aggressive && n <= 2 && scary && rnd < P.bluff) return aggressive;
+      const boardEdge = !smart || opps.every(o => evaluateShowing(t.upCards(o)) < myShow);
+      if (aggressive && adj >= P.raise * 0.85 * valueMul && rnd < Math.min(0.95, P.aggr + 0.25)) return aggressive;
+      if (aggressive && draw && rnd < P.semibluff * 0.7) return aggressive;
+      if (aggressive && n <= 2 && scary && boardEdge && rnd < P.bluff * bluffMul) return aggressive;
       return passive;
     }
     if (h.street === 3) {
       if (h.raises === 0) {
-        const door = rankOf(p.cards[2].c);
-        const callers = t.live().filter(o => o !== p && o.seat !== h.bringInSeat && o.bet > 0).length;
-        const toAct = t.actors().filter(o => o !== p && (!o.acted || o.seat === h.bringInSeat));
-        const stealSpot = callers === 0 && toAct.every(o => rankOf(o.cards[2].c) < door);
-        if (aggressive && adj >= P.raise && rnd < P.aggr) return aggressive;
-        if (aggressive && stealSpot && rnd < P.steal) return aggressive;
-        if (adj >= P.enter || (shortStack && adj >= P.enter * 0.8)) return passive;
+        const stealSpot = t.isStealSpot(p);
+        let steal = P.steal;
+        if (stealSpot && adapt) {
+          const toAct = t.actors().filter(o => o !== p && (!o.acted || o.seat === h.bringInSeat));
+          const fts = toAct.length ? toAct.reduce((s, o) => s + rate(o.st.fts, o.st.ftsOpp, 0.55, 6), 0) / toAct.length : 0.55;
+          steal = Math.min(0.98, steal * (1 + adapt * (fts / 0.55 - 1)));
+        }
+        if (aggressive && adj >= P.raise && rnd < P.aggr && !trap) return aggressive;
+        if (aggressive && P.commit && adj >= P.enter * 0.85 && rnd < 0.7) return aggressive;
+        if (aggressive && stealSpot && rnd < steal) return aggressive;
+        if (adj >= P.enter || (shortStack && adj >= P.enter * 0.8) || (draw && rnd < P.chase)) return passive;
         return find('fold');
       }
-      const need = P.enter + 0.12 * (h.raises - 1) - P.sticky * 0.5;
-      if (aggressive && adj >= P.raise + 0.25 * (h.raises - 1) && rnd < P.aggr) return aggressive;
-      if (adj >= need) return passive;
+      let need = P.enter + 0.12 * (h.raises - 1) - P.sticky * 0.5;
+      if (adapt && h.stealer !== null && h.raises === 1) {
+        const thief = t.players.find(o => o.id === h.stealer);
+        const sr = rate(thief.st.steal, thief.st.stealOpp, 0.35, 6);
+        need -= Math.min(0.4, adapt * Math.max(0, sr - 0.35) * 1.2);
+      }
+      if (aggressive && adj >= P.raise + 0.25 * (h.raises - 1) && rnd < P.aggr && !trap) return aggressive;
+      if (adj >= need || (draw && rnd < P.chase * 0.5) || (committed && adj >= need * 0.75)) return passive;
       return find('fold');
     }
-    const potOdds = toCall / (t.potTotal() + toCall);
-    if (aggressive && adj >= P.raise && rnd < P.aggr) return aggressive;
+    const future = smart && h.street < 7 ? (7 - h.street) * h.unit * 0.6 * (1 - P.sticky) : 0;
+    const potOdds = (toCall + future) / (t.potTotal() + toCall + future);
+    if (aggressive && adj >= P.raise && rnd < P.aggr && !trap) return aggressive;
+    if (aggressive && draw && rnd < P.semibluff * 0.4) return aggressive;
     const eqAdj = eq * (1 - P.respect * (h.raises + 1)) + P.sticky * 0.08;
     if (eqAdj >= potOdds) return passive;
-    if (aggressive && n === 1 && rnd < P.bluff * 0.3) return aggressive;
+    if (committed && eqAdj >= potOdds * 0.7) return passive;
+    if (draw && rnd < P.chase) return passive;
+    if (aggressive && n === 1 && rnd < P.bluff * 0.3 * bluffMul) return aggressive;
     return find('fold');
   }
 
@@ -985,7 +1446,7 @@ const Stud = (() => {
   }
 
   return {
-    LEVELS, PERSONAS, SUIT_SYMBOLS, RANK_LABELS, HAND_NAMES, STREET_NAMES, STREET_EN, MAX_RAISE_LEVELS,
+    LEVELS, STYLES, AI_NAMES, PERSONAS, TALK, pickAiPlayers, isDraw, readEquity, effectiveStyle, SUIT_SYMBOLS, RANK_LABELS, HAND_NAMES, STREET_NAMES, STREET_EN, MAX_RAISE_LEVELS,
     rankOf, suitOf, cardLabel, fmt, makeRng, shuffle, newDeck, evaluate, evaluateShowing,
     describeScore, scoreCategory, estimateEquity, analyze, aiDecide, Tournament
   };

@@ -1,12 +1,13 @@
 'use strict';
 
 /**
- * 7스터드 온라인 서버
+ * 포커 토너먼트 온라인 서버 (노리밋 홀덤 · 7카드 스터드)
  * 구성 요소
  *  - HTTP: public/ 정적 파일과 /healthz (Render 헬스 체크)
- *  - WebSocket(/ws): 방 만들기·참가·재접속, 설정, 시작, 액션, 다음 핸드 준비, 리매치, 채팅
+ *  - WebSocket(/ws): 방 만들기·참가·재접속, 설정(게임 종류 포함), 시작, 액션, 다음 핸드 준비, 리매치, 채팅
+ *  - GAMES: 게임별 엔진·최대 인원·레벨업 간격 선택지
  *  - Room: 방 하나의 멤버·설정·대회(Tournament)를 관리하고, 서버가 딜러로서 엔진을 돌린다
- *  - 화면 상태(view): 접속자마다 따로 만들며, 히든 카드는 본인 것과 쇼다운 공개분만 담는다
+ *  - 화면 상태(view): 접속자마다 따로 만들며, 남의 히든·홀카드는 쇼다운(홀덤은 올인 공개 포함) 공개분만 담는다
  * 상태는 모두 메모리에만 있어서 서버가 재시작되면 진행 중인 방은 사라진다.
  */
 const http = require('http');
@@ -15,13 +16,13 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const Stud = require('./public/engine.js');
+const Holdem = require('./public/holdem.js');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 5;
 const MAX_ROOMS = 200;
-const MAX_PLAYERS = 7;
 const MAX_MEMBERS = 16;
 const ROOM_IDLE_MS = 30 * 60 * 1000;
 const DISCONNECTED_TURN_SECS = 45;
@@ -33,6 +34,11 @@ const TIME_SCALE = Number(process.env.STUD_TIME_SCALE) || 1;
 const CHAT_KEEP = 80;
 const CHAT_MAX_LEN = 200;
 const CHAT_MIN_INTERVAL_MS = 600;
+const GAMES = {
+  holdem: { engine: Holdem, name: '노리밋 홀덤', maxPlayers: 9, hpl: [10, 7, 5], sims: 120, fastSims: 60 },
+  stud: { engine: Stud, name: '7카드 스터드', maxPlayers: 7, hpl: [6, 4, 3], sims: 160, fastSims: 50 }
+};
+const DEFAULT_GAME = 'holdem';
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -114,6 +120,27 @@ function payoutTable(n) {
 }
 
 /**
+ * 게임 종류 문자열을 검증한다.
+ * @param {*} g 입력값
+ * @returns {string} 'holdem' | 'stud' (모르면 기본값)
+ */
+function gameKey(g) {
+  return Object.prototype.hasOwnProperty.call(GAMES, g) ? g : DEFAULT_GAME;
+}
+
+/**
+ * 레벨 구조를 채팅 안내용 문장으로 만든다.
+ * @param {string} game 게임 종류
+ * @param {number} idx 레벨 인덱스
+ * @returns {string} 안내 문장
+ */
+function levelLine(game, idx) {
+  if (game === 'holdem') return Holdem.levelText(Holdem.LEVELS[idx]);
+  const L = Stud.LEVELS[idx];
+  return `앤티 ${Stud.fmt(L.ante)} / 브링인 ${Stud.fmt(L.bringIn)} / ${Stud.fmt(L.small)}-${Stud.fmt(L.big)}`;
+}
+
+/**
  * 웹소켓으로 JSON 메시지를 보낸다 (열려 있을 때만).
  * @param {WebSocket} ws 연결
  * @param {object} msg 메시지
@@ -127,7 +154,7 @@ function send(ws, msg) {
  * 방 하나.
  * 내부 요소
  *  - members: {clientId, token, name, mode, ws, connected, playerId, spectator}
- *  - settings: ais(컴퓨터 수), hpl(레벨업 간격), speed(진행 속도), turnSecs(턴 제한, 0이면 없음)
+ *  - settings: game(holdem|stud), ais(컴퓨터 수), hpl(레벨업 간격), speed(진행 속도), turnSecs(턴 제한, 0이면 없음)
  *  - t: 진행 중인 Tournament, runId: 리매치 시 이전 대회를 멈추기 위한 실행 번호
  *  - pending: 사람 차례 대기 정보, next: 다음 핸드 준비 대기 정보
  *  - chat: 최근 채팅·시스템 메시지 (방이 살아 있는 동안 리매치를 넘어 유지)
@@ -136,13 +163,15 @@ class Room {
   /**
    * 빈 방을 만든다.
    * @param {string} code 방 코드
+   * @param {string} [game] 게임 종류 (holdem | stud)
    */
-  constructor(code) {
+  constructor(code, game) {
+    const g = gameKey(game);
     this.code = code;
     this.members = [];
     this.hostId = null;
     this.phase = 'lobby';
-    this.settings = { ais: 5, hpl: 6, speed: 'normal', turnSecs: 30 };
+    this.settings = { game: g, ais: g === 'holdem' ? 6 : 5, hpl: GAMES[g].hpl[0], speed: 'normal', turnSecs: 30 };
     this.t = null;
     this.runId = 0;
     this.pending = null;
@@ -203,6 +232,14 @@ class Room {
   }
 
   /**
+   * 지금 게임의 설정값 (엔진, 최대 인원 등).
+   * @returns {object} GAMES 항목
+   */
+  get G() {
+    return GAMES[this.settings.game];
+  }
+
+  /**
    * 대회에서 자리를 가진(관전자가 아닌) 멤버들.
    * @returns {object[]} 멤버 배열
    */
@@ -246,7 +283,7 @@ class Room {
       m.connected = true;
       if (this.phase === 'lobby') m.name = name;
     } else {
-      const spectator = this.phase !== 'lobby' || this.seated().length >= MAX_PLAYERS;
+      const spectator = this.phase !== 'lobby' || this.seated().length >= this.G.maxPlayers;
       m = { clientId: newId(), token, name, mode: 'practice', ws, connected: true, playerId: null, spectator, lastChat: 0 };
       this.members.push(m);
       this.clampAis();
@@ -293,23 +330,39 @@ class Room {
   }
 
   /**
-   * 사람 수에 맞춰 컴퓨터 수를 총 2~7명 범위로 맞춘다.
+   * 사람 수에 맞춰 컴퓨터 수를 게임 최대 인원 안으로 맞춘다.
    * @returns {void}
    */
   clampAis() {
     const humans = this.seated().length;
-    this.settings.ais = Math.max(0, Math.min(this.settings.ais, MAX_PLAYERS - humans));
+    this.settings.ais = Math.max(0, Math.min(this.settings.ais, this.G.maxPlayers - humans));
   }
 
   /**
-   * 방장이 바꾼 설정을 검증해서 적용한다.
+   * 로비에서 자리를 다시 정한다: 들어온 순서대로 최대 인원까지 선수, 나머지는 관전자.
+   * @returns {void}
+   */
+  reseat() {
+    this.members.forEach((m, i) => { m.spectator = i >= this.G.maxPlayers; });
+    this.clampAis();
+  }
+
+  /**
+   * 방장이 바꾼 설정을 검증해서 적용한다. 게임 종류가 바뀌면 레벨업 간격을 그 게임 기본값으로 돌리고 자리를 다시 정한다.
    * @param {object} patch 바꿀 설정
    * @returns {void}
    */
   applySettings(patch) {
     const s = this.settings;
+    if (typeof patch.game === 'string' && GAMES[patch.game] && patch.game !== s.game) {
+      s.game = patch.game;
+      s.hpl = this.G.hpl[0];
+      if (s.game === 'holdem' && s.ais === 5) s.ais = 6;
+      this.reseat();
+      this.system(`게임을 ${this.G.name}(으)로 바꿨어요`);
+    }
     if (Number.isInteger(patch.ais)) s.ais = patch.ais;
-    if ([3, 4, 6].includes(patch.hpl)) s.hpl = patch.hpl;
+    if (this.G.hpl.includes(patch.hpl)) s.hpl = patch.hpl;
     if (SPEED_MS[patch.speed]) s.speed = patch.speed;
     if ([0, 20, 30, 60].includes(patch.turnSecs)) s.turnSecs = patch.turnSecs;
     this.clampAis();
@@ -324,7 +377,8 @@ class Room {
     const humans = this.seated().filter(m => m.connected);
     this.clampAis();
     if (humans.length + this.settings.ais < 2) return '사람과 컴퓨터를 합쳐 2명 이상이어야 해요.';
-    const personas = Stud.pickAiPlayers(this.settings.ais, Math.random);
+    const G = this.G;
+    const personas = G.engine.pickAiPlayers(this.settings.ais, Math.random);
     const players = humans.map(m => ({ name: m.name, isHuman: true })).concat(personas);
     this.members.forEach(m => { m.playerId = null; });
     humans.forEach((m, i) => { m.playerId = i; });
@@ -335,8 +389,8 @@ class Room {
     this.payout = payoutTable(players.length);
     this.lastLevel = 0;
     this.reportedBusts = new Set();
-    this.system(`대회 시작 · ${players.length}명 (사람 ${humans.length} + 컴퓨터 ${personas.length}) · 시작 스택 10,000`);
-    this.t = new Stud.Tournament({ players, controller: this.controller(this.runId), handsPerLevel: this.settings.hpl, sims: 160, paidPlaces: this.payout.length });
+    this.t = new G.engine.Tournament({ players, controller: this.controller(this.runId), handsPerLevel: this.settings.hpl, sims: G.sims, paidPlaces: this.payout.length });
+    this.system(`${G.name} 대회 시작 · ${players.length}명 (사람 ${humans.length} + 컴퓨터 ${personas.length}) · 시작 스택 ${Stud.fmt(this.t.startingStack)}`);
     this.phase = 'playing';
     const runId = this.runId;
     const t = this.t;
@@ -367,8 +421,8 @@ class Room {
     this.phase = 'lobby';
     this.system('같은 방에서 새 대회를 준비해요');
     this.members = this.members.filter(m => m.connected);
-    this.members.forEach((m, i) => { m.playerId = null; m.spectator = i >= MAX_PLAYERS; });
-    this.clampAis();
+    this.members.forEach(m => { m.playerId = null; });
+    this.reseat();
     this.queueFlush();
   }
 
@@ -407,12 +461,11 @@ class Room {
    */
   announce(type, t) {
     if (!t) return;
-    if (type === 'deal' && t.hand && t.hand.street === 3) {
+    if (type === 'deal' && t.hand) {
       const idx = t.levelIndex();
       if (idx !== this.lastLevel) {
         this.lastLevel = idx;
-        const L = Stud.LEVELS[idx];
-        this.system(`레벨 ${idx + 1} 시작 · 앤티 ${Stud.fmt(L.ante)} / 브링인 ${Stud.fmt(L.bringIn)} / ${Stud.fmt(L.small)}-${Stud.fmt(L.big)}`);
+        this.system(`레벨 ${idx + 1} 시작 · ${levelLine(this.settings.game, idx)}`);
       }
     } else if (type === 'settle') {
       t.players.filter(p => p.isHuman && p.won > 0).forEach(p => {
@@ -451,7 +504,8 @@ class Room {
         await this.gate();
         if (this.fast) return undefined;
         const base = SPEED_MS[this.settings.speed];
-        return sleep(TIME_SCALE * (kind === 'runout' ? base * 1.3 : this.humanInHand() ? base : base * 0.35));
+        const scale = kind === 'runout' ? 1.3 : kind === 'fold' ? 0.5 : 1;
+        return sleep(TIME_SCALE * base * scale * (kind === 'runout' || this.humanInHand() ? 1 : 0.35));
       },
       humanAction: (p, legal, t) => {
         if (!alive()) return never();
@@ -465,7 +519,7 @@ class Room {
         if (!alive()) return never();
         if (this.t.players.filter(p => p.isHuman).every(p => p.busted)) {
           this.fast = true;
-          this.t.sims = 50;
+          this.t.sims = this.G.fastSims;
         }
         if (this.fast) return sleep(0);
         await this.gate();
@@ -516,16 +570,22 @@ class Room {
   }
 
   /**
-   * 사람이 보낸 액션을 검증해서 엔진에 넘긴다.
+   * 사람이 보낸 액션을 검증해서 엔진에 넘긴다. 노리밋 베트·레이즈는 보낸 금액(to)을 min~max 안으로 맞춘다.
    * @param {object} m 멤버
-   * @param {object} msg {handNo, i, type}
+   * @param {object} msg {handNo, i, type, to?}
    * @returns {void}
    */
   submitAct(m, msg) {
     const pd = this.pending;
     if (!pd || m.playerId === null || pd.playerId !== m.playerId || msg.handNo !== pd.handNo) return;
-    const a = pd.legal[msg.i];
+    let a = pd.legal[msg.i];
     if (!a || a.type !== msg.type) return;
+    if (a.min !== undefined) {
+      const want = Math.round(Number(msg.to));
+      if (!Number.isFinite(want)) return;
+      const to = Math.max(a.min, Math.min(a.max, want));
+      a = Object.assign({}, a, { to, amount: a.amount + (to - a.to), allIn: to === a.max });
+    }
     clearTimeout(pd.timer);
     this.pending = null;
     pd.res(a);
@@ -599,8 +659,7 @@ class Room {
   }
 
   /**
-   * 멤버 한 명에게 보낼 화면 상태를 만든다.
-   * 히든 카드는 본인 것과 쇼다운에서 공개된 것만 담고, 실전 모드 멤버에게는 폴드한 사람의 오픈 카드도 빼서 보낸다.
+   * 멤버 한 명에게 보낼 화면 상태를 만든다. 게임 부분은 게임 종류별 함수가 채운다.
    * @param {object} m 멤버
    * @returns {object} state 메시지
    */
@@ -621,11 +680,30 @@ class Room {
       you: { clientId: m.clientId, playerId: m.playerId, mode: m.mode, host: m.clientId === this.hostId },
       game: null
     };
+    if (!this.t) return view;
+    view.game = this.t instanceof Holdem.Tournament ? this.holdemView(m) : this.studView(m);
+    if (this.pending) {
+      view.turn = { playerId: this.pending.playerId, deadline: this.pending.deadline };
+      if (this.pending.playerId === m.playerId) view.yourTurn = { handNo: this.pending.handNo, legal: this.pending.legal };
+    }
+    if (this.next) {
+      view.next = { deadline: this.next.deadline, ready: Array.from(this.next.ready), you: this.next.ready.has(m.clientId) };
+    }
+    return view;
+  }
+
+  /**
+   * 7스터드 화면 상태. 히든 카드는 본인 것과 쇼다운에서 공개된 것만 담고,
+   * 실전 모드 멤버에게는 폴드한 사람의 오픈 카드와 죽은 카드도 빼서 보낸다.
+   * @param {object} m 멤버
+   * @returns {object} game 부분
+   */
+  studView(m) {
     const t = this.t;
-    if (!t) return view;
     const practice = m.mode === 'practice';
     const h = t.hand;
-    view.game = {
+    return {
+      type: 'stud',
       handNo: t.handNo,
       levelIndex: t.levelIndex(),
       handsPerLevel: t.handsPerLevel,
@@ -652,14 +730,47 @@ class Room {
       } : null,
       log: t.log.slice(-LOG_LIMIT)
     };
-    if (this.pending) {
-      view.turn = { playerId: this.pending.playerId, deadline: this.pending.deadline };
-      if (this.pending.playerId === m.playerId) view.yourTurn = { handNo: this.pending.handNo, legal: this.pending.legal };
-    }
-    if (this.next) {
-      view.next = { deadline: this.next.deadline, ready: Array.from(this.next.ready), you: this.next.ready.has(m.clientId) };
-    }
-    return view;
+  }
+
+  /**
+   * 홀덤 화면 상태. 남의 홀카드는 쇼다운·올인 공개 때만 담고, 폴드한 남의 카드는 아예 보내지 않는다(머크).
+   * @param {object} m 멤버
+   * @returns {object} game 부분
+   */
+  holdemView(m) {
+    const t = this.t;
+    const h = t.hand;
+    const idx = t.levelIndex();
+    return {
+      type: 'holdem',
+      handNo: t.handNo,
+      levelIndex: idx,
+      level: Holdem.LEVELS[idx],
+      nextLevel: Holdem.LEVELS[Math.min(idx + 1, Holdem.LEVELS.length - 1)],
+      handsPerLevel: t.handsPerLevel,
+      startingStack: t.startingStack,
+      finished: t.finished,
+      fast: this.fast,
+      players: t.players.map(p => {
+        const owner = p.isHuman ? this.memberOf(p.id) : null;
+        const mine = p.id === m.playerId;
+        const visible = p.inHand && (!p.folded || mine);
+        return {
+          id: p.id, name: p.name, isHuman: p.isHuman, seat: p.seat, stack: p.stack, busted: p.busted, place: p.place,
+          inHand: p.inHand, folded: p.folded, allIn: p.allIn, bet: p.bet, lastAction: p.lastAction || '',
+          shown: !!p.shown, result: p.result || '', won: p.won || 0, refund: p.refund || 0,
+          connected: owner ? owner.connected : true,
+          hole: visible ? p.hole.map(c => (mine || p.shown ? c : null)) : []
+        };
+      }),
+      hand: h ? {
+        street: h.street, board: h.board.slice(), buttonSeat: h.buttonSeat, sbSeat: h.sbSeat, bbSeat: h.bbSeat,
+        currentBet: h.currentBet, minRaise: h.minRaise, raises: h.raises, actingSeat: h.actingSeat,
+        done: h.done, showdown: h.showdown, runout: h.runout, pot: t.potTotal(),
+        pots: (h.pots || []).map(pt => ({ amount: pt.amount, winners: pt.winners.map(w => w.id) }))
+      } : null,
+      log: t.log.slice(-LOG_LIMIT)
+    };
   }
 }
 
@@ -692,7 +803,7 @@ function handle(ws, msg) {
   if (!msg || typeof msg.t !== 'string') return;
   if (msg.t === 'create') {
     if (rooms.size >= MAX_ROOMS) return send(ws, { t: 'error', code: 'busy', msg: '지금은 방을 더 만들 수 없어요. 잠시 뒤에 다시 시도해 주세요.' });
-    const room = new Room(makeCode());
+    const room = new Room(makeCode(), msg.game);
     rooms.set(room.code, room);
     return attach(ws, room, msg);
   }
@@ -854,7 +965,7 @@ function stop() {
 }
 
 if (require.main === module) {
-  start(PORT).then(port => console.log(`7stud server listening on :${port}`));
+  start(PORT).then(port => console.log(`poker server listening on :${port}`));
   process.on('SIGTERM', () => stop().then(() => process.exit(0)));
 }
 

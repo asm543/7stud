@@ -2,11 +2,11 @@
   "name": "stud7-online",
   "version": "1.0.0",
   "private": true,
-  "description": "7카드 스터드 토너먼트 - 친구와 함께하는 온라인 방 (서버 딜러)",
+  "description": "포커 토너먼트 온라인 - 노리밋 홀덤 · 7카드 스터드, 친구와 함께하는 방 (서버 딜러)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node test/engine.test.js && node test/online.test.js"
+    "test": "node test/engine.test.js && node test/holdem.test.js 30 both && node test/online.test.js"
   },
   "engines": {
     "node": ">=18"

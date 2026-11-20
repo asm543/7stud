@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>7스터드 온라인</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='6' width='40' height='52' rx='6' fill='%23fbf8ef'/%3E%3Ctext x='30' y='44' font-size='30' text-anchor='middle' font-family='Arial' font-weight='700' fill='%23c8102e'%3E7%3C/text%3E%3C/svg%3E">
+<title>포커 토너먼트 온라인</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='6' width='40' height='52' rx='6' fill='%23fbf8ef'/%3E%3Ctext x='30' y='45' font-size='32' text-anchor='middle' font-family='Arial' font-weight='700' fill='%2315171b'%3E%E2%99%A0%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 /* VOICE everyday game: calm card-room focus, only what the decision needs on screen
-   IDEA a tournament stud table with the floor's one-line tournament clock above it and the table talk beside it
-   PICTURE the felt table itself: opponents on the rail, you across the bottom, pot and dead cards in the middle
+   IDEA a tournament table (no-limit hold'em or seven-card stud) with the floor's one-line tournament clock above it and the table talk beside it
+   PICTURE the felt table itself: opponents on the rail, you across the bottom, board/pot (hold'em) or pot and dead cards (stud) in the middle
    COLOUR deep felt green ground, walnut rail, ivory cards in a four-colour deck, chip red for raises, brass for the pot, your turn and your chat
    TYPE Barlow Condensed for the clock, room code, card ranks and chip counts + IBM Plex Sans KR for everything written
    LAYOUT laptop: clock bar, table with action bar under it, chat column with the hand log folded below; under 1100px: table, sticky action bar with a chat button, chat as a bottom sheet */
-:root{color-scheme:dark;--room:#0a2c1f;--bar:#06231a;--felt:#127048;--felt-2:#0b4630;--rail:#4a2b17;--rail-2:#6e4427;--ink:#f4f0e6;--muted:#b9cbbf;--panel:rgba(3,24,15,.78);--line:rgba(244,240,230,.14);--brass:#e3b75b;--chip:#d6453a;--ok:#5fd18b;--card:#fbf8ef;--spade:#15171b;--heart:#c8102e;--diamond:#1d5fc4;--club:#17803e;--ocw:clamp(28px,2.75vw,38px);--mcw:64px}
+:root{color-scheme:dark;--room:#0a2c1f;--bar:#06231a;--felt:#127048;--felt-2:#0b4630;--rail:#4a2b17;--rail-2:#6e4427;--ink:#f4f0e6;--muted:#b9cbbf;--panel:rgba(3,24,15,.78);--line:rgba(244,240,230,.14);--brass:#e3b75b;--chip:#d6453a;--ok:#5fd18b;--card:#fbf8ef;--spade:#15171b;--heart:#c8102e;--diamond:#1d5fc4;--club:#17803e;--ocw:clamp(28px,2.75vw,38px);--mcw:64px;--bcw:clamp(42px,4.1vw,60px)}
 *{box-sizing:border-box;min-width:0}
 [hidden]{display:none!important}
 html,body{height:100%}
@@ -209,18 +209,42 @@ table.st tr.me td{color:var(--brass);font-weight:700}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--card);color:#10251a;padding:10px 16px;border-radius:12px;font-weight:600;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.4);max-width:calc(100% - 32px)}
 .chatpop{position:fixed;left:12px;bottom:104px;z-index:25;max-width:min(78%,420px);padding:8px 12px;border-radius:4px 14px 14px 14px;background:var(--card);color:#10251a;font-size:14px;box-shadow:0 10px 24px rgba(0,0,0,.4);border:0;text-align:left;overflow-wrap:anywhere}
 .sheetback{position:fixed;inset:0;background:rgba(2,14,9,.6);z-index:34}
+.table.he{grid-template-columns:repeat(5,minmax(0,1fr));grid-template-areas:"lu tl tc tr ru" "ll mid mid mid rl" "bl me me me br";gap:12px 14px;padding:26px 34px 20px;border-radius:120px}
+.table.he .seat:not(.bottom){align-self:center}
+.he .fan .cd+.cd{margin-left:calc(var(--cw)*-.42)}
+.he .fan.open .cd+.cd{margin-left:4px}
+.pos{display:inline-grid;place-items:center;min-width:22px;height:20px;padding:0 6px;border-radius:99px;font:700 12px/1 'Barlow Condensed',sans-serif;background:rgba(244,240,230,.14);color:var(--ink);letter-spacing:.02em}
+.pos.d{background:var(--card);color:#10251a;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.board{display:flex;gap:6px;justify-content:center;margin:2px 0 4px}
+.board .cd{--cw:var(--bcw)}
+.board .cd.win{box-shadow:0 0 0 2px var(--brass),0 3px 8px rgba(0,0,0,.35)}
+.slot{width:var(--bcw);height:calc(var(--bcw)*1.4);border-radius:calc(var(--bcw)*.13);border:1.5px dashed rgba(244,240,230,.2);flex:none}
+.hole{display:flex;gap:6px;align-items:flex-end}
+.me .hole .cd:first-child{transform:rotate(-3deg)}
+.me .hole .cd:last-child{transform:rotate(3deg)}
+.sizer{display:grid;gap:6px;flex:1 1 320px;max-width:440px}
+.presets{display:flex;gap:6px;flex-wrap:wrap}
+.presets .chip{min-height:34px;padding:2px 11px;font-size:13px;font-weight:600}
+.presets .chip[aria-pressed="true"]{border-color:var(--chip);background:rgba(214,69,58,.22)}
+.slide{display:flex;gap:8px;align-items:center}
+.slide input[type=range]{flex:1;accent-color:var(--chip);min-height:30px}
+.slide input[type=number]{width:118px;min-height:40px;padding:6px 10px;border-radius:10px;border:1px solid rgba(244,240,230,.2);background:rgba(244,240,230,.06);font:700 19px 'Barlow Condensed',sans-serif;text-align:right}
+.btnrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn.go{min-width:150px}
+.gamepick{margin-top:4px}
 @media(min-width:1100px){.main{flex-wrap:nowrap}.log{max-height:240px}.chatpop{display:none}}
 @media(min-width:1100px) and (min-height:840px){.app{height:100%}.main{min-height:0}.play,.side{min-height:0}.table{min-height:0}}
 @media(max-width:1099px){.play{flex-basis:100%}.side{max-width:none;flex-basis:100%}.actionbar{box-shadow:0 10px 30px rgba(0,0,0,.45)}.playing .chatbtn{display:inline-grid}.playing .chat{position:fixed;left:0;right:0;bottom:0;z-index:35;height:min(640px,82dvh);min-height:0;border-radius:20px 20px 0 0;background:#0b3a28;transform:translateY(105%);visibility:hidden;transition:transform .25s ease-out,visibility 0s .25s;box-shadow:0 -20px 50px rgba(0,0,0,.45)}.playing.chat-open .chat{transform:none;visibility:visible;transition:transform .25s ease-out}.playing .chat-close{display:grid}.chat-close{width:44px;height:44px;border-radius:10px;border:1px solid rgba(244,240,230,.18);background:transparent;place-items:center}.lobby{padding:0}}
-@media(max-width:759px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:none;padding:14px 12px;gap:8px;min-height:0;border-radius:28px;border-width:8px}.table>*{grid-area:auto!important}.table .center,.table .seat.bottom{grid-column:1 / -1}.lvl .lv{font-size:24px}.lvl .lim{font-size:19px}.bar{gap:6px 14px}.handno{display:none}}
-@media(max-width:559px){.table{grid-template-columns:minmax(0,1fr);padding:10px 8px}:root{--ocw:clamp(26px,7.8vw,30px);--mcw:clamp(38px,10.8vw,52px)}.seat.bottom{padding:8px 10px 10px}.seat:not(.bottom){grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:7px 10px}.seat:not(.bottom) .cards{grid-column:2;grid-row:1 / span 3}.seat:not(.bottom) .sn{display:none}.center{grid-template-columns:auto auto auto;align-items:center;gap:4px 12px}.center .potlbl{display:none}.center .status,.center .deadrow{grid-column:1 / -1}.actionbar{padding:10px}.ab-btns{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr))}.ab-btns .btn{padding:6px 8px;font-size:15px}.roomchip{order:-2}.tools{order:-1;margin-left:auto}.ticket .code{font-size:36px}.nextlv span:last-child{display:none}}
+@media(max-width:759px){.table{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:none;padding:14px 12px;gap:8px;min-height:0;border-radius:28px;border-width:8px}.table>*{grid-area:auto!important}.table .center,.table .seat.bottom{grid-column:1 / -1!important}.lvl .lv{font-size:24px}.lvl .lim{font-size:19px}.bar{gap:6px 14px}.handno{display:none}}
+@media(max-width:759px){.table.he{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:none;gap:6px;padding:12px 10px;border-radius:28px}.he .center{padding:4px 0}:root{--bcw:clamp(36px,10vw,50px)}}
+@media(max-width:559px){.table{grid-template-columns:minmax(0,1fr);padding:10px 8px}.table.he{grid-template-columns:repeat(2,minmax(0,1fr));padding:8px 6px;gap:6px}.he .seat:not(.bottom){padding:6px 8px;gap:2px}.he .seat:not(.bottom) .stk{font-size:17px}.he .seat:not(.bottom) .nm{font-size:14px}.he .center .board,.he .center .street{grid-column:1 / -1}.he .seat:not(.bottom)>*:not(.cards){grid-column:1}.he .center{grid-template-columns:minmax(0,1fr);gap:3px}.he .center .pot{font-size:34px}.ab-btns .sizer,.ab-btns .btnrow{grid-column:1 / -1}.sizer{flex-basis:100%;max-width:none}.btnrow{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr))}.btnrow .btn{padding:6px 8px;font-size:15px;min-width:0}.slide input[type=number]{width:96px}:root{--ocw:clamp(26px,7.8vw,30px);--mcw:clamp(38px,10.8vw,52px)}.seat.bottom{padding:8px 10px 10px}.seat:not(.bottom){grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:7px 10px}.seat:not(.bottom) .cards{grid-column:2;grid-row:1 / span 3}.seat:not(.bottom) .sn{display:none}.center{grid-template-columns:auto auto auto;align-items:center;gap:4px 12px}.center .potlbl{display:none}.center .status,.center .deadrow{grid-column:1 / -1}.actionbar{padding:10px}.ab-btns{width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr))}.ab-btns .btn{padding:6px 8px;font-size:15px}.roomchip{order:-2}.tools{order:-1;margin-left:auto}.ticket .code{font-size:36px}.nextlv span:last-child{display:none}}
 @media(prefers-reduced-motion:reduce){.cd.deal{animation:none}.seat,.playing .chat,.logbox summary svg{transition:none}}
 </style>
 </head>
 <body>
 <div class="app">
   <header class="bar">
-    <span class="brand" id="brand">7 Stud 온라인</span>
+    <span class="brand" id="brand">포커 토너먼트</span>
     <button class="roomchip" id="roomChip" type="button" title="초대 링크 복사" hidden><i class="dot" id="roomDot"></i><span id="roomCode"></span></button>
     <div class="lvl" id="lvl" hidden><b class="lv" id="cLv"></b><b class="lim" id="cLim"></b><span id="cAnte"></span></div>
     <div class="nextlv" id="nextLv" hidden><span class="pips" id="cPips" aria-hidden="true"></span><span id="cNext"></span></div>
@@ -286,9 +310,13 @@ table.st tr.me td{color:var(--brass);font-weight:700}
 
 <div class="ov" id="ovHome">
   <form class="dlg" id="homeForm" autocomplete="off">
-    <h2>7스터드 온라인</h2>
+    <h2>포커 토너먼트</h2>
     <p>방을 만들고 링크를 보내면 친구가 바로 들어와요. 계정은 필요 없고, 빈자리는 컴퓨터가 채워요. 혼자 컴퓨터랑 해도 돼요.</p>
     <label class="fld"><span>닉네임</span><input id="nameIn" maxlength="12" placeholder="최대 12자" required></label>
+    <div class="fld gamepick"><span>새 방 게임 (로비에서도 바꿀 수 있어요)</span><div class="seg2" id="homeGame">
+      <button type="button" data-hgame="holdem" aria-pressed="true"><span>노리밋 홀덤</span><small>WSOP 방식 · 최대 9명</small></button>
+      <button type="button" data-hgame="stud" aria-pressed="false"><span>7카드 스터드</span><small>대회 룰 · 최대 7명</small></button>
+    </div></div>
     <div class="row" style="margin-top:12px"><button class="btn next" type="button" id="createBtn">새 방 만들기</button></div>
     <div class="or">또는 받은 코드로 참가</div>
     <div class="joinrow">
@@ -306,8 +334,19 @@ table.st tr.me td{color:var(--brass);font-weight:700}
 
 <div class="ov" id="ovRules" hidden>
   <div class="dlg">
-    <h2>대회 룰</h2>
-    <ul>
+    <h2 id="rulesTitle">대회 룰</h2>
+    <ul id="rulesHoldem">
+      <li>노리밋 텍사스 홀덤 토너먼트. 시작 스택 20,000, 레벨 1은 블라인드 100/200에 빅블라인드 앤티 200.</li>
+      <li>빅블라인드 앤티(BBA): 빅블라인드가 테이블 전체 앤티를 냄. 칩이 모자라면 블라인드를 먼저 채우고 남는 칩으로 앤티. 앤티는 끝까지 줄이지 않음.</li>
+      <li>버튼은 매 핸드 왼쪽으로. 탈락자가 생기면 데드 버튼 규칙: 빅블라인드는 항상 한 칸씩 이동.</li>
+      <li>헤즈업: 버튼이 스몰블라인드. 프리플랍은 버튼이 먼저, 플랍부터는 빅블라인드가 먼저.</li>
+      <li>최소 베트 = 빅블라인드. 레이즈는 직전 풀 베트·레이즈 크기 이상. 최대는 내 스택 전부(올인).</li>
+      <li>풀 레이즈보다 적은 올인은 이미 액션한 사람에게 레이즈를 다시 열지 않음(콜·폴드만). 여러 숏 올인이 합쳐 풀 레이즈 이상이면 다시 열림.</li>
+      <li>올인으로 더 이상 베팅이 없으면 남은 사람 카드를 공개하고 보드를 끝까지 깜. 콜 받지 못한 베트는 돌려줌.</li>
+      <li>분할 팟의 남는 칩은 버튼 왼쪽에 가까운 승자에게. 폴드한 카드는 공개되지 않음.</li>
+      <li>단축키: F 폴드 · C 체크/콜 · R 베트/레이즈 (금액은 슬라이더·버튼·직접 입력) · H 힌트 · Enter 다음 핸드 · / 채팅 입력</li>
+    </ul>
+    <ul id="rulesStud">
       <li>매 핸드 전원 앤티. 3구는 히든 2장 + 오픈 1장.</li>
       <li>오픈 카드가 가장 낮은 사람이 브링인. 숫자가 같으면 ♣ &lt; ♦ &lt; ♥ &lt; ♠ 중 낮은 무늬.</li>
       <li>브링인 다음 사람들은 fold / call / complete(스몰 단위까지).</li>
@@ -323,18 +362,28 @@ table.st tr.me td{color:var(--brass);font-weight:700}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="/engine.js"></script>
+<script src="/holdem.js"></script>
 <script>
 {
   const S = Stud;
+  const HE = Holdem;
   const SLOTS = { 0: [], 1: ['tc'], 2: ['lm', 'rm'], 3: ['lm', 'tc', 'rm'], 4: ['lb', 'lt', 'rt', 'rb'], 5: ['lb', 'lt', 'tc', 'rt', 'rb'], 6: ['lb', 'lm', 'lt', 'rt', 'rm', 'rb'] };
+  const SLOTS_HE = { 0: [], 1: ['tc'], 2: ['tl', 'tr'], 3: ['ll', 'tc', 'rl'], 4: ['ll', 'tl', 'tr', 'rl'], 5: ['ll', 'tl', 'tc', 'tr', 'rl'], 6: ['ll', 'lu', 'tl', 'tr', 'ru', 'rl'], 7: ['ll', 'lu', 'tl', 'tc', 'tr', 'ru', 'rl'], 8: ['bl', 'll', 'lu', 'tl', 'tr', 'ru', 'rl', 'br'] };
+  const GAME_INFO = {
+    holdem: { name: '노리밋 홀덤', max: 9, hpl: [[10, '10핸드 (표준)'], [7, '7핸드 (터보)'], [5, '5핸드 (하이퍼)']] },
+    stud: { name: '7카드 스터드', max: 7, hpl: [[6, '6핸드 (표준)'], [4, '4핸드 (터보)'], [3, '3핸드 (하이퍼)']] }
+  };
+  const SLIDER_STEPS = 1000;
   const BUY_IN = 1500;
   const CHAT_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>';
   const $ = id => document.getElementById(id);
   const sheetQuery = window.matchMedia('(max-width: 1099px)');
   const ui = {
     V: null, offset: 0, seenCards: new Set(), seenHand: -1, hint: null, hintOpen: false, logStick: true, chatStick: true,
-    sentAct: '', toastTimer: null, popTimer: null, chat: [], unread: 0, chatOpen: false, endClosed: false, lastPhase: null
+    sentAct: '', toastTimer: null, popTimer: null, chat: [], unread: 0, chatOpen: false, endClosed: false, lastPhase: null,
+    raiseTo: 0, raiseKey: '', turnKey: '', homeGame: 'holdem'
   };
+  const narrowQuery = window.matchMedia('(max-width: 759px)');
   const net = { ws: null, open: false, code: null, retry: 0, pingTimer: null, queued: null };
 
   /**
@@ -584,7 +633,29 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     save('stud7-name', name);
     $('homeErr').textContent = net.open ? '' : '서버에 연결하는 중이에요. 잠시만 기다려 주세요 (무료 서버는 깨어나는 데 1분쯤 걸려요).';
     if (code) send({ t: 'join', code: code.toUpperCase(), token: getToken(), name });
-    else send({ t: 'create', token: getToken(), name });
+    else send({ t: 'create', token: getToken(), name, game: ui.homeGame });
+  }
+
+  /**
+   * 지금 방(또는 진행 중인 대회)의 게임 종류. 방 밖이면 홈 화면에서 고른 게임.
+   * @returns {string} 'holdem' | 'stud'
+   */
+  function gameType() {
+    const V = ui.V;
+    if (V && V.game) return V.game.type;
+    if (V) return V.room.settings.game;
+    return ui.homeGame;
+  }
+
+  /**
+   * 홈 화면의 새 방 게임 선택을 바꾼다 (이 브라우저에 기억).
+   * @param {string} g 'holdem' | 'stud'
+   * @returns {void}
+   */
+  function setHomeGame(g) {
+    ui.homeGame = GAME_INFO[g] ? g : 'holdem';
+    save('poker-game', ui.homeGame);
+    $('homeGame').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.hgame === ui.homeGame)));
   }
 
   /**
@@ -746,12 +817,128 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
+   * 홀덤 핸드 종류를 읽기 쉬운 이름으로 바꾼다.
+   * @param {number[]} hole 홀카드 두 장
+   * @returns {string} 예: 'A K 수딧', 'Q Q 포켓 페어'
+   */
+  function classLabel(hole) {
+    const name = HE.classOf(hole[0], hole[1]).replace(/T/g, '10');
+    const kind = name.endsWith('s') ? '수딧' : name.endsWith('o') ? '오프수트' : '포켓 페어';
+    const ranks = name.replace(/[so]$/, '');
+    const parts = ranks.startsWith('10') ? ['10', ranks.slice(2)] : [ranks[0], ranks.slice(1)];
+    return `${parts.join(' ')} ${kind}`;
+  }
+
+  /**
+   * 홀덤 포지션 칩 (D 버튼, SB, BB).
+   * @param {object} p 화면 상태의 플레이어
+   * @returns {string} HTML
+   */
+  function posHtml(p) {
+    const h = ui.V.game.hand;
+    if (!h || !p.inHand) return '';
+    const out = [];
+    if (h.buttonSeat === p.seat) out.push('<span class="pos d" title="딜러 버튼">D</span>');
+    if (h.sbSeat === p.seat && h.sbSeat !== h.buttonSeat) out.push('<span class="pos" title="스몰 블라인드">SB</span>');
+    if (h.sbSeat === p.seat && h.sbSeat === h.buttonSeat) out.push('<span class="pos" title="스몰 블라인드 (헤즈업 버튼)">SB</span>');
+    if (h.bbSeat === p.seat) out.push('<span class="pos" title="빅 블라인드 + 앤티">BB</span>');
+    return out.join('');
+  }
+
+  /**
+   * 홀덤 좌석 하나를 그린다.
+   * 구성: 이름(친구 표시·접속 점)과 포지션 칩, 스택과 액션 배지, 홀카드 두 장(남의 카드는 뒷면, 공개되면 앞면), 베팅·쇼다운 결과.
+   * 내 자리는 큰 홀카드와 함께 지금 패(프리플랍은 핸드 종류와 상위 %)를 오른쪽에 보여준다.
+   * @param {object} p 화면 상태의 플레이어
+   * @param {string} area 그리드 영역 이름
+   * @param {boolean} bottom 아래쪽 큰 자리 여부
+   * @returns {string} HTML
+   */
+  function seatHtmlHE(p, area, bottom) {
+    const V = ui.V;
+    const g = V.game;
+    const h = g.hand;
+    const mine = p.id === V.you.playerId;
+    const cls = ['seat'];
+    if (bottom) cls.push('bottom');
+    if (mine) cls.push('me');
+    if (h && h.actingSeat === p.seat && !h.done) cls.push('turn');
+    if (h && h.done && p.won > 0) cls.push('win');
+    if (p.busted && !(h && p.inHand)) cls.push('out');
+    else if (p.folded && p.inHand) cls.push('folded');
+    const timer = V.turn && V.turn.playerId === p.id && V.turn.deadline ? `<span class="badge time" data-deadline="${V.turn.deadline}"></span>` : '';
+    const friend = p.isHuman && !mine ? `<span class="tag">친구</span><i class="dot${p.connected ? ' on' : ''}" title="${p.connected ? '접속 중' : '연결 끊김'}"></i>` : '';
+    const name = mine ? `나 (${esc(p.name)})` : esc(p.name);
+    const hn = g.handNo;
+    const holeCards = p.hole.map((c, i) => cardHtml(c, `${hn}-${p.id}-${i}`)).join('');
+    let cards = '';
+    if (p.busted && !(h && p.inHand)) cards = `<span class="muted">탈락 · ${p.place}위</span>`;
+    else if (h && p.inHand && p.hole.length) {
+      const open = p.hole.some(c => c !== null && c !== undefined);
+      cards = bottom ? `<div class="hole">${holeCards}</div>` : `<div class="cards"><div class="grp down fan${open ? ' open' : ''}">${holeCards}</div></div>`;
+    }
+    const foot = [];
+    if (p.bet > 0 && h && !h.done) foot.push(`<span class="betpill"><i></i>${S.fmt(p.bet)}</span>`);
+    if (p.result) foot.push(`<span class="res">${esc(p.result)}</span>`);
+    if (h && h.done && p.won > 0) foot.push(`<span class="won">+${S.fmt(p.won)}</span>`);
+    if (mine && bottom) {
+      const known = p.hole.filter(c => c !== null && c !== undefined);
+      let desc = '';
+      if (known.length === 2 && !p.result) {
+        desc = h && h.board.length >= 3
+          ? S.describeScore(S.evaluate(known.concat(h.board)))
+          : `${classLabel(known)} · 상위 ${Math.max(1, Math.round(HE.handPct(known) * 100))}%`;
+      }
+      return `<div class="${cls.join(' ')}" style="grid-area:${area}">
+        <div class="top"><span class="nm">${name}</span><span class="sn">${timer}${posHtml(p)}</span></div>
+        <div class="mebody">${cards || '<span class="muted">대기 중</span>'}<div class="mestk"><b>${S.fmt(p.stack)}</b><span>${desc ? esc(desc) : ''}</span></div></div>
+        ${foot.length || badgesHtml(p) ? `<div class="line2">${badgesHtml(p)}${foot.join('')}</div>` : ''}
+      </div>`;
+    }
+    return `<div class="${cls.join(' ')}" style="grid-area:${area}">
+      <div class="top"><span class="nm">${name}${friend}</span><span class="sn">${timer}${posHtml(p)}</span></div>
+      <div class="line2"><span class="stk">${S.fmt(p.stack)}</span>${badgesHtml(p)}</div>
+      ${cards}
+      ${foot.length ? `<div class="line2">${foot.join('')}</div>` : ''}
+    </div>`;
+  }
+
+  /**
+   * 홀덤 테이블 가운데: 스트리트와 블라인드, 보드 5칸(아직 안 깐 칸은 점선), 팟, 진행 상황.
+   * @returns {string} HTML
+   */
+  function centerHtmlHE() {
+    const V = ui.V;
+    const g = V.game;
+    const h = g.hand;
+    if (!h) return '<div class="center"><span class="potlbl">POT</span><span class="pot">0</span></div>';
+    let status = '';
+    if (h.done) status = h.pots.map(pt => `${pt.winners.map(nameOf).map(esc).join(', ')} +${S.fmt(pt.amount)}`).join(' · ');
+    else if (V.yourTurn) status = '당신 차례';
+    else if (h.runout) status = '올인 · 보드를 끝까지 깔아요';
+    else {
+      const acting = g.players.find(p => p.seat === h.actingSeat);
+      if (acting) status = `${esc(acting.name)} ${acting.isHuman ? '차례' : '생각 중…'}`;
+    }
+    const slots = [];
+    for (let i = 0; i < 5; i++) slots.push(i < h.board.length ? cardHtml(h.board[i], `${g.handNo}-b-${i}`) : '<span class="slot" aria-hidden="true"></span>');
+    return `<div class="center">
+      <span class="street">${HE.STREETS[h.street]} · 블라인드 ${S.fmt(g.level.sb)}/${S.fmt(g.level.bb)}</span>
+      <div class="board" aria-label="보드">${slots.join('')}</div>
+      <span class="potlbl">POT</span>
+      <span class="pot">${S.fmt(h.pot)}</span>
+      <div class="status">${status}</div>
+    </div>`;
+  }
+
+  /**
    * 테이블 전체를 그린다. 나(관전자면 첫 사람)를 아래에 두고 나머지를 시계방향으로 배치한다.
    * @returns {void}
    */
   function renderTable() {
     const V = ui.V;
     const g = V && V.game;
+    $('table').classList.toggle('he', gameType() === 'holdem');
     if (!g) {
       $('table').innerHTML = `<div class="center"><span class="potlbl">POT</span><span class="pot">0</span><div class="status muted">${net.code ? '대기 중' : ''}</div></div>`;
       return;
@@ -759,6 +946,16 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (ui.seenHand !== g.handNo) {
       ui.seenHand = g.handNo;
       ui.seenCards = new Set();
+    }
+    if (g.type === 'holdem') {
+      const ps = g.players;
+      let k = ps.findIndex(p => p.id === V.you.playerId);
+      if (k < 0) k = Math.max(0, ps.findIndex(p => p.isHuman));
+      const slots = SLOTS_HE[ps.length - 1] || SLOTS_HE[8];
+      const seats = [];
+      for (let j = 1; j < ps.length; j++) seats.push(seatHtmlHE(ps[(k + j) % ps.length], slots[j - 1], false));
+      $('table').innerHTML = seats.join('') + centerHtmlHE() + seatHtmlHE(ps[k], 'me', true);
+      return;
     }
     const ps = g.players;
     let k = ps.findIndex(p => p.id === V.you.playerId);
@@ -786,6 +983,19 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (V) $('modeBtn').textContent = V.you.mode === 'practice' ? '연습 모드' : '실전 모드';
     ['lvl', 'nextLv', 'cHand'].forEach(id => { $(id).hidden = !g; });
     if (!g) return;
+    if (g.type === 'holdem') {
+      const n = Math.max(g.handNo, 1);
+      const played = ((n - 1) % g.handsPerLevel) + 1;
+      const left = g.handsPerLevel - played;
+      const alive = g.players.filter(p => !p.busted).length;
+      $('cLv').textContent = `Lv ${g.levelIndex + 1}`;
+      $('cLim').textContent = `${S.fmt(g.level.sb)} / ${S.fmt(g.level.bb)}`;
+      $('cAnte').textContent = `BB 앤티 ${S.fmt(g.level.ante)}`;
+      $('cPips').innerHTML = Array.from({ length: g.handsPerLevel }, (_, i) => `<i class="${i < played ? 'on' : ''}"></i>`).join('');
+      $('cNext').innerHTML = `${left === 0 ? '이번 핸드 후 레벨업' : `레벨업까지 ${left}핸드`}<span> · 다음 ${S.fmt(g.nextLevel.sb)} / ${S.fmt(g.nextLevel.bb)}</span>`;
+      $('cHand').innerHTML = `핸드 #${g.handNo} · 남은 인원 <b>${alive} / ${g.players.length}</b>`;
+      return;
+    }
     const idx = g.levelIndex;
     const L = S.LEVELS[idx];
     const nxt = S.LEVELS[Math.min(idx + 1, S.LEVELS.length - 1)];
@@ -815,6 +1025,116 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
+   * 지금 내 차례의 노리밋 베트·레이즈 액션 (없으면 null).
+   * @returns {object|null} min~max가 있는 액션
+   */
+  function nlRaise() {
+    const V = ui.V;
+    return V && V.yourTurn ? V.yourTurn.legal.find(a => a.min !== undefined) || null : null;
+  }
+
+  /**
+   * 베트 크기 버튼 목록. 프리플랍 오픈은 빅블라인드 배수, 그 밖에는 팟 비율(팟 레이즈 = 콜한 뒤 팟만큼 더). 스몰블라인드 단위로 반올림.
+   * @param {object} a 노리밋 베트·레이즈 액션
+   * @returns {Array<[string, number]>} [이름, 총 베팅 금액]
+   */
+  function presetList(a) {
+    const g = ui.V.game;
+    const h = g.hand;
+    const p = me();
+    const bb = g.level.bb;
+    const toCall = Math.max(0, h.currentBet - p.bet);
+    const frac = f => (h.currentBet === 0 ? f * h.pot : h.currentBet + f * (h.pot + toCall));
+    const mid = h.street === 0 && h.raises === 0
+      ? [['2.5BB', 2.5 * bb], ['3BB', 3 * bb], ['팟', frac(1)]]
+      : [['½ 팟', frac(0.5)], ['¾ 팟', frac(0.75)], ['팟', frac(1)]];
+    const unit = g.level.sb;
+    return [['최소', a.min]].concat(mid.map(([label, v]) => [label, Math.round(v / unit) * unit]), [['올인', a.max]]).map(([label, v]) => [label, Math.max(a.min, Math.min(a.max, v))]);
+  }
+
+  /**
+   * 슬라이더 위치(0~1000)를 베팅 금액으로 바꾼다. 작은 금액을 세밀하게 고를 수 있게 제곱 곡선을 쓰고, 끝값이 아니면 SB 단위로 맞춘다.
+   * @param {object} a 노리밋 액션
+   * @param {number} pos 슬라이더 위치
+   * @returns {number} 총 베팅 금액
+   */
+  function sliderToAmount(a, pos) {
+    if (pos <= 0) return a.min;
+    if (pos >= SLIDER_STEPS) return a.max;
+    const unit = ui.V.game.level.sb;
+    const raw = a.min + (a.max - a.min) * (pos / SLIDER_STEPS) ** 2;
+    return Math.max(a.min, Math.min(a.max, Math.round(raw / unit) * unit));
+  }
+
+  /**
+   * 베팅 금액을 슬라이더 위치로 바꾼다 (sliderToAmount의 역).
+   * @param {object} a 노리밋 액션
+   * @param {number} v 총 베팅 금액
+   * @returns {number} 슬라이더 위치
+   */
+  function amountToSlider(a, v) {
+    if (a.max <= a.min) return SLIDER_STEPS;
+    return Math.round(Math.sqrt((v - a.min) / (a.max - a.min)) * SLIDER_STEPS);
+  }
+
+  /**
+   * 베트 크기 조절기(슬라이더·입력칸·크기 버튼 선택 표시)와 레이즈 버튼 이름을 ui.raiseTo에 맞춘다.
+   * 다시 그리기와 상관없이 고른 금액이 유지되도록 HTML에는 값을 넣지 않고 여기서 채운다.
+   * @param {string} [skip] 갱신하지 않을 요소 id (사용자가 조작 중인 것)
+   * @returns {void}
+   */
+  function syncSizer(skip) {
+    const a = nlRaise();
+    const range = $('raiseRange');
+    if (!a || !range) return;
+    const v = ui.raiseTo;
+    if (skip !== 'raiseRange') range.value = String(amountToSlider(a, v));
+    if (skip !== 'raiseNum') $('raiseNum').value = String(v);
+    const word = v >= a.max ? 'All-in' : a.type === 'bet' ? 'Bet' : 'Raise to';
+    $('raiseLbl').textContent = `${word} ${S.fmt(v)}`;
+    document.querySelectorAll('#abBtns [data-preset]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.preset) === v)));
+  }
+
+  /**
+   * 고른 베팅 금액을 정한다 (min~max로 맞춤).
+   * @param {number} v 금액
+   * @param {string} [skip] 갱신하지 않을 요소 id
+   * @returns {void}
+   */
+  function setRaise(v, skip) {
+    const a = nlRaise();
+    if (!a || !Number.isFinite(v)) return;
+    ui.raiseTo = Math.max(a.min, Math.min(a.max, Math.round(v)));
+    syncSizer(skip);
+  }
+
+  /**
+   * 홀덤 내 차례의 버튼들: 폴드, 체크/콜, 베트 크기 조절기(크기 버튼·슬라이더·직접 입력)와 베트/레이즈 버튼.
+   * @param {object[]} legal 가능한 액션
+   * @param {string} hintBtn 힌트 버튼 HTML
+   * @returns {string} HTML
+   */
+  function nlButtonsHtml(legal, hintBtn) {
+    const btns = [];
+    let sizer = '';
+    legal.forEach((a, i) => {
+      if (a.type === 'fold') btns.push(`<button class="btn" type="button" data-i="${i}"><span>Fold</span><small>폴드 · F</small></button>`);
+      else if (a.type === 'check') btns.push(`<button class="btn call" type="button" data-i="${i}"><span>Check</span><small>체크 · C</small></button>`);
+      else if (a.type === 'call') btns.push(`<button class="btn call" type="button" data-i="${i}"><span>${a.allIn ? 'All-in' : 'Call'} ${S.fmt(a.amount)}</span><small>콜${a.allIn ? ' 올인' : ''} · C</small></button>`);
+      else {
+        btns.push(`<button class="btn go" type="button" data-i="${i}"><span id="raiseLbl"></span><small>${a.type === 'bet' ? '베트' : '레이즈'} · R</small></button>`);
+        if (a.max > a.min) {
+          sizer = `<div class="sizer" role="group" aria-label="베팅 금액">
+            <div class="presets">${presetList(a).map(([label, v]) => `<button class="chip" type="button" data-preset="${v}">${label}</button>`).join('')}</div>
+            <div class="slide"><input type="range" id="raiseRange" min="0" max="${SLIDER_STEPS}" step="1" aria-label="베팅 금액 슬라이더"><label class="sr" for="raiseNum">베팅 금액</label><input type="number" id="raiseNum" min="${a.min}" max="${a.max}" step="${ui.V.game.level.sb}" inputmode="numeric"></div>
+          </div>`;
+        }
+      }
+    });
+    return `${hintBtn}${sizer}<div class="btnrow">${btns.join('')}</div>`;
+  }
+
+  /**
    * 액션 바: 내 차례 정보와 버튼(힌트 포함), 다음 핸드 준비, 탈락·관전 안내. 작은 화면에서는 맨 앞에 채팅 버튼.
    * @returns {void}
    */
@@ -830,6 +1150,11 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     } else if (V.yourTurn) {
       const h = g.hand;
       const toCall = Math.max(0, h.currentBet - p.bet);
+      const turnKey = `${V.yourTurn.handNo}-${h.street}-${h.raises}-${h.currentBet}`;
+      if (turnKey !== ui.turnKey) {
+        ui.turnKey = turnKey;
+        requestAnimationFrame(revealMe);
+      }
       info = `<b>내 차례</b> · 팟 ${S.fmt(h.pot)}`;
       if (toCall > 0) info += ` · 콜 ${S.fmt(Math.min(toCall, p.stack))}`;
       if (toCall > 0 && V.you.mode === 'practice') info += ` · <em>필요 승률 ${(toCall / (h.pot + toCall) * 100).toFixed(1)}%</em>`;
@@ -843,6 +1168,18 @@ table.st tr.me td{color:var(--brass);font-weight:700}
         raise: a => [`Raise → ${S.fmt(a.to)}`, `레이즈${a.allIn ? ' 올인' : ''} · R`, 'go']
       };
       const hintBtn = V.you.mode === 'practice' ? `<button class="btn ghost" type="button" data-hint="1" aria-expanded="${ui.hintOpen}">힌트<small>H</small></button>` : '';
+      if (g.type === 'holdem') {
+        const a = nlRaise();
+        const key = `${V.yourTurn.handNo}-${h.street}-${h.raises}-${h.currentBet}`;
+        if (a && ui.raiseKey !== key) {
+          ui.raiseKey = key;
+          ui.raiseTo = a.min;
+        }
+        setHtml($('abInfo'), info);
+        setHtml($('abBtns'), chatBtn + nlButtonsHtml(V.yourTurn.legal, hintBtn));
+        syncSizer();
+        return;
+      }
       btns = hintBtn + V.yourTurn.legal.map((a, i) => {
         const [main, sub, cls] = label[a.type](a);
         return `<button class="btn ${cls}" type="button" data-i="${i}"><span>${main}</span><small>${sub}</small></button>`;
@@ -873,12 +1210,31 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
+   * 좁은 화면에서 내 차례가 시작될 때, 아래에 붙은 액션 바가 내 자리를 가리면 내 자리가 보이도록 스크롤한다.
+   * @returns {void}
+   */
+  function revealMe() {
+    if (!narrowQuery.matches) return;
+    const seat = document.querySelector('#table .seat.me');
+    if (!seat) return;
+    const limit = $('actionbar').getBoundingClientRect().top - 8;
+    const bottom = seat.getBoundingClientRect().bottom;
+    if (bottom > limit) window.scrollBy({ top: bottom - limit, behavior: 'smooth' });
+  }
+
+  /**
    * 화면 상태를 엔진의 analyze()가 읽을 수 있는 모양으로 바꿔 힌트를 계산한다.
    * @returns {object|null} 힌트 데이터
    */
   function computeHint() {
     const V = ui.V;
     const g = V.game;
+    if (g.type === 'holdem') {
+      const self = me();
+      if (!self) return null;
+      const opponents = g.players.filter(p => p.inHand && !p.folded && p.id !== self.id).length;
+      return HE.analyze({ hole: self.hole, board: g.hand.board, opponents, toCall: Math.max(0, g.hand.currentBet - self.bet), pot: g.hand.pot }, 2000);
+    }
     const players = g.players.map(p => ({ ...p, cards: p.cards.filter(x => x.c !== null && x.c !== undefined) }));
     const self = players.find(p => p.id === V.you.playerId);
     if (!self) return null;
@@ -904,6 +1260,10 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (!ui.hint) ui.hint = computeHint();
     const a = ui.hint;
     if (!a) return;
+    if (V.game.type === 'holdem') {
+      renderHintHE(a);
+      return;
+    }
     const isBringIn = V.yourTurn.legal.some(x => x.type === 'bringin');
     const verdict = isBringIn ? '브링인은 강제 베팅이라 폴드할 수 없어요. 브링인만 낼지 complete할지 고르세요' : a.toCall === 0 ? '체크로 공짜 카드를 볼 수 있어요' : a.eq >= a.need ? '추정 승률이 필요 승률보다 높아요' : '추정 승률이 필요 승률보다 낮아요';
     const rows = [`<div class="hd"><h2>힌트</h2><button class="tbtn icon" type="button" data-hintclose="1" aria-label="힌트 닫기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`];
@@ -914,6 +1274,27 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (a.nextStreet) rows.push(`<div class="kv"><span>${a.nextStreet}에 족보가 오르는 카드</span><span>${a.improving}장 / ${a.unseen}장 (${(a.improving / a.unseen * 100).toFixed(0)}%)</span></div>`);
     a.ranks.forEach(r => rows.push(`<div class="kv"><span>${r.label}: 내가 ${r.mine}장, 남의 오픈에 ${r.seen}장</span><span>${r.left}장 남음</span></div>`));
     a.suits.forEach(s => rows.push(`<div class="kv"><span>${s.symbol}: 내가 ${s.mine}장, 남의 오픈에 ${s.seen}장</span><span>${s.left}장 남음</span></div>`));
+    $('hintPop').innerHTML = rows.join('');
+  }
+
+  /**
+   * 홀덤 힌트 내용: 지금 패(프리플랍은 핸드 종류와 상위 %), 무작위 상대 대비 승률과 필요 승률, 드로우, 다음 카드에 족보가 오르는 장수.
+   * @param {object} a Holdem.analyze 결과
+   * @returns {void}
+   */
+  function renderHintHE(a) {
+    const close = '<div class="hd"><h2>힌트</h2><button class="tbtn icon" type="button" data-hintclose="1" aria-label="힌트 닫기"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+    const rows = [close];
+    const self = me();
+    rows.push(`<div class="kv"><span>내 핸드</span><span>${esc(classLabel(self.hole))} · 상위 ${Math.max(1, Math.round(a.pct * 100))}%</span></div>`);
+    rows.push(`<div class="kv"><span>지금 내 패</span><span>${esc(a.current)}</span></div>`);
+    const verdict = a.toCall === 0 ? '체크로 다음 카드를 공짜로 볼 수 있어요' : a.eq >= a.need ? '추정 승률이 필요 승률보다 높아요' : '추정 승률이 필요 승률보다 낮아요';
+    rows.push(`<div class="kv"><span>추정 승률 (상대 ${a.opponents}명)</span><span class="big">${(a.eq * 100).toFixed(0)}%</span></div>
+      <div class="meter"><i style="width:${Math.min(100, a.eq * 100).toFixed(1)}%"></i>${a.toCall ? `<b style="left:${(a.need * 100).toFixed(1)}%"></b>` : ''}</div>
+      <p>${a.toCall ? `빨간 선 = 필요 승률 ${(a.need * 100).toFixed(1)}% (콜 ${S.fmt(a.toCall)} ÷ 콜 후 팟 ${S.fmt(a.pot + a.toCall)}). ` : ''}${verdict}. 상대 패를 무작위로 가정한 값이라, 레이즈한 상대에게는 실제보다 낙관적이에요.</p>`);
+    const drawName = ['', '거트샷 등 약한 드로우', '플러시 또는 양방향 스트레이트 드로우', '콤보 드로우 (플러시 + 스트레이트)'][a.draw];
+    if (drawName) rows.push(`<div class="kv"><span>드로우</span><span>${drawName}</span></div>`);
+    if (a.nextStreet) rows.push(`<div class="kv"><span>${a.nextStreet}에 족보가 오르는 카드</span><span>${a.improving}장 / ${a.unseen}장 (${(a.improving / a.unseen * 100).toFixed(0)}%)</span></div>`);
     $('hintPop').innerHTML = rows.join('');
   }
 
@@ -971,8 +1352,10 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     const link = `${location.origin}${location.pathname}?room=${room.code}`;
     const players = room.members.filter(m => !m.spectator);
     const s = room.settings;
+    const info = GAME_INFO[s.game] || GAME_INFO.holdem;
     const total = players.length + s.ais;
-    const maxAi = Math.max(0, 7 - players.length);
+    const maxAi = Math.max(0, info.max - players.length);
+    const he = s.game === 'holdem';
     const opt = (list, cur) => list.map(([v, t]) => `<option value="${v}"${String(v) === String(cur) ? ' selected' : ''}>${t}</option>`).join('');
     const dis = isHost ? '' : ' disabled';
     const html = `<div class="card">
@@ -980,14 +1363,18 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       <p class="link">${esc(link)}</p>
       <div class="sec"><h3>참가자 ${players.length}명 <small>+ 컴퓨터 ${s.ais}명 = ${total}명 테이블</small></h3>
         <ul class="members">${room.members.map(m => `<li><i class="dot${m.connected ? ' on' : ''}"></i><span class="grow">${esc(m.name)}${m.clientId === V.you.clientId ? ' (나)' : ''}</span>${m.clientId === room.hostId ? '<span class="tag">방장</span>' : ''}${m.spectator ? '<span class="tag">관전</span>' : ''}<span class="muted">${m.mode === 'real' ? '실전' : '연습'}</span></li>`).join('')}</ul></div>
+      <div class="sec"><h3>게임 <small>${isHost ? '' : '방장만 바꿀 수 있어요'}</small></h3><div class="seg2">
+        <button type="button" data-game="holdem" aria-pressed="${he}"${dis}><span>노리밋 홀덤</span><small>WSOP 방식 · BB 앤티 · 최대 9명</small></button>
+        <button type="button" data-game="stud" aria-pressed="${!he}"${dis}><span>7카드 스터드</span><small>대회 룰 · 고정 리밋 · 최대 7명</small></button>
+      </div></div>
       <div class="sec"><h3>내 모드</h3><div class="seg2">
-        <button type="button" data-mode="practice" aria-pressed="${V.you.mode === 'practice'}"><span>연습 모드</span><small>죽은 카드·힌트 표시</small></button>
-        <button type="button" data-mode="real" aria-pressed="${V.you.mode === 'real'}"><span>실전 모드</span><small>폴드한 카드는 직접 기억</small></button>
+        <button type="button" data-mode="practice" aria-pressed="${V.you.mode === 'practice'}"><span>연습 모드</span><small>${he ? '승률·팟 오즈 힌트 표시' : '죽은 카드·힌트 표시'}</small></button>
+        <button type="button" data-mode="real" aria-pressed="${V.you.mode === 'real'}"><span>실전 모드</span><small>${he ? '힌트 없이 직접 판단' : '폴드한 카드는 직접 기억'}</small></button>
       </div></div>
       <div class="sec"><h3>대회 설정 <small>${isHost ? '' : '방장만 바꿀 수 있어요'}</small></h3><div class="setgrid">
         <label class="fld"><span>컴퓨터 상대</span><select data-set="ais"${dis}>${opt(Array.from({ length: maxAi + 1 }, (_, i) => [i, i === 0 ? '0명 (사람끼리)' : `${i}명`]), s.ais)}</select></label>
         <label class="fld"><span>턴 제한 시간</span><select data-set="turnSecs"${dis}>${opt([[20, '20초'], [30, '30초'], [60, '60초'], [0, '없음']], s.turnSecs)}</select></label>
-        <label class="fld"><span>레벨업 간격</span><select data-set="hpl"${dis}>${opt([[6, '6핸드 (표준)'], [4, '4핸드 (터보)'], [3, '3핸드 (하이퍼)']], s.hpl)}</select></label>
+        <label class="fld"><span>레벨업 간격</span><select data-set="hpl"${dis}>${opt(info.hpl, s.hpl)}</select></label>
         <label class="fld"><span>컴퓨터 진행 속도</span><select data-set="speed"${dis}>${opt([['slow', '느리게'], ['normal', '보통'], ['fast', '빠르게']], s.speed)}</select></label>
       </div></div>
       <div class="row">${isHost ? `<button class="startbtn" type="button" data-start="1"${total < 2 ? ' disabled' : ''}>대회 시작 (${total}명)</button>` : '<span class="muted">방장이 대회를 시작하기를 기다리는 중이에요.</span>'}</div>
@@ -1076,8 +1463,10 @@ table.st tr.me td{color:var(--brass);font-weight:700}
     if (key === ui.sentAct) return;
     ui.sentAct = key;
     ui.hintOpen = false;
-    send({ t: 'act', handNo: V.yourTurn.handNo, i, type: a.type });
-    $('abBtns').querySelectorAll('button[data-i]').forEach(b => { b.disabled = true; });
+    const msg = { t: 'act', handNo: V.yourTurn.handNo, i, type: a.type };
+    if (a.min !== undefined) msg.to = a.max > a.min ? ui.raiseTo || a.min : a.min;
+    send(msg);
+    $('abBtns').querySelectorAll('button[data-i], button[data-preset], input').forEach(b => { b.disabled = true; });
     renderHint();
   }
 
@@ -1135,6 +1524,18 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   }
 
   /**
+   * 지금 게임에 맞는 대회 룰 창을 연다.
+   * @returns {void}
+   */
+  function showRules() {
+    const he = gameType() === 'holdem';
+    $('rulesTitle').textContent = `대회 룰 · ${GAME_INFO[he ? 'holdem' : 'stud'].name}`;
+    $('rulesHoldem').hidden = !he;
+    $('rulesStud').hidden = he;
+    $('ovRules').hidden = false;
+  }
+
+  /**
    * 메뉴를 열고 닫는다.
    * @param {boolean} open 열기 여부
    * @returns {void}
@@ -1163,6 +1564,10 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       const code = $('codeIn').value.trim();
       enter(code.length === 5 ? code : null);
     });
+    $('homeGame').addEventListener('click', e => {
+      const b = e.target.closest('button[data-hgame]');
+      if (b) setHomeGame(b.dataset.hgame);
+    });
     $('roomChip').addEventListener('click', copyLink);
     $('modeBtn').addEventListener('click', () => {
       if (ui.V) send({ t: 'mode', mode: ui.V.you.mode === 'practice' ? 'real' : 'practice' });
@@ -1176,7 +1581,7 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       if (!b) return;
       setMenu(false);
       if (b.dataset.menu === 'copy') copyLink();
-      if (b.dataset.menu === 'rules') $('ovRules').hidden = false;
+      if (b.dataset.menu === 'rules') showRules();
       if (b.dataset.menu === 'leave') leave();
     });
     document.addEventListener('click', e => {
@@ -1187,6 +1592,7 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.copy) copyLink();
+      if (b.dataset.game) send({ t: 'settings', patch: { game: b.dataset.game } });
       if (b.dataset.mode) send({ t: 'mode', mode: b.dataset.mode });
       if (b.dataset.start) send({ t: 'start' });
     });
@@ -1209,10 +1615,30 @@ table.st tr.me td{color:var(--brass);font-weight:700}
       if (b.dataset.next) ready();
       else if (b.dataset.chat) setChatOpen(true);
       else if (b.dataset.hint) toggleHint();
+      else if (b.dataset.preset) setRaise(Number(b.dataset.preset));
       else if (b.dataset.result) {
         ui.endClosed = false;
         render();
       } else if (b.dataset.i !== undefined) act(Number(b.dataset.i));
+    });
+    $('abBtns').addEventListener('input', e => {
+      const a = nlRaise();
+      if (!a) return;
+      if (e.target.id === 'raiseRange') setRaise(sliderToAmount(a, Number(e.target.value)), 'raiseRange');
+      if (e.target.id === 'raiseNum' && e.target.value !== '') {
+        const v = Number(e.target.value);
+        if (v >= a.min && v <= a.max) setRaise(v, 'raiseNum');
+      }
+    });
+    $('abBtns').addEventListener('change', e => {
+      if (e.target.id === 'raiseNum') setRaise(Number(e.target.value) || 0);
+    });
+    $('abBtns').addEventListener('keydown', e => {
+      if (e.target.id !== 'raiseNum' || e.key !== 'Enter') return;
+      e.preventDefault();
+      setRaise(Number(e.target.value) || 0);
+      const i = ui.V && ui.V.yourTurn ? ui.V.yourTurn.legal.findIndex(x => x.min !== undefined) : -1;
+      if (i >= 0) act(i);
     });
     $('hintPop').addEventListener('click', e => {
       if (e.target.closest('[data-hintclose]')) toggleHint();
@@ -1292,6 +1718,7 @@ table.st tr.me td{color:var(--brass);font-weight:700}
   function boot() {
     bind();
     $('nameIn').value = load('stud7-name', '');
+    setHomeGame(load('poker-game', 'holdem'));
     const code = (new URLSearchParams(location.search).get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
     if (code) {
       $('codeIn').value = code;

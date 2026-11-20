@@ -1448,7 +1448,7 @@ const Stud = (() => {
   return {
     LEVELS, STYLES, AI_NAMES, PERSONAS, TALK, pickAiPlayers, isDraw, readEquity, effectiveStyle, SUIT_SYMBOLS, RANK_LABELS, HAND_NAMES, STREET_NAMES, STREET_EN, MAX_RAISE_LEVELS,
     rankOf, suitOf, cardLabel, fmt, makeRng, shuffle, newDeck, evaluate, evaluateShowing,
-    describeScore, scoreCategory, estimateEquity, analyze, aiDecide, Tournament
+    describeScore, scoreCategory, scoreRanks, estimateEquity, analyze, aiDecide, Tournament
   };
 })();
 
